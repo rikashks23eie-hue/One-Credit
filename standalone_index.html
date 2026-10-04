@@ -1,0 +1,2142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MED-HMAS | Hierarchical Multi-Agent Healthcare System</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            crimson: {
+              50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185',
+              500: '#f43f5e', 600: '#e11d48', 700: '#be123c', 800: '#9f1239', 900: '#881337', 950: '#4c0519',
+            },
+            blood: {
+              50: '#fef2f2', 100: '#fee2e2', 200: '#fecaca', 300: '#fca5a5', 400: '#f87171',
+              500: '#ef4444', 600: '#dc2626', 700: '#b91c1c', 800: '#991b1b', 900: '#7f1d1d', 950: '#450a0a',
+            },
+            clinical: {
+              50: '#fafafa', 100: '#f5f5f5', 200: '#e5e5e5', 300: '#d4d4d4', 400: '#a3a3a3',
+              500: '#737373', 600: '#525252', 700: '#404040', 800: '#262626', 900: '#171717', 950: '#0a0a0a',
+            }
+          },
+          keyframes: {
+            pulseRed: {
+              '0%, 100%': { boxShadow: '0 0 12px rgba(220,38,38,0.4)' },
+              '50%': { boxShadow: '0 0 32px rgba(220,38,38,0.9), 0 0 50px rgba(220,38,38,0.5)' }
+            },
+            flowScan: {
+              '0%': { transform: 'translateY(-100%)' },
+              '100%': { transform: 'translateY(100%)' }
+            }
+          },
+          animation: {
+            'pulse-red': 'pulseRed 2s ease-in-out infinite',
+            'flow-scan': 'flowScan 1.5s linear infinite'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM UMD -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- Babel Standalone for JSX in browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js CDN for robust rendering in standalone mode -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: #0a0a0a;
+      color: #e5e5e5;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #140508;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #7f1d1d;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #dc2626;
+    }
+    .glow-card {
+      background: linear-gradient(135deg, #1a0a0d 0%, #120508 100%);
+      border: 1px solid rgba(127, 29, 29, 0.35);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+      transition: all 0.3s ease;
+    }
+    .glow-card:hover {
+      border-color: rgba(220, 38, 38, 0.5);
+      box-shadow: 0 0 20px rgba(220, 38, 38, 0.2), 0 4px 24px rgba(0,0,0,0.5);
+    }
+    .active-agent-glow {
+      border-color: #dc2626 !important;
+      background: linear-gradient(135deg, rgba(127,29,29,0.3) 0%, rgba(20,5,8,0.9) 100%) !important;
+      box-shadow: 0 0 25px rgba(220, 38, 38, 0.6), 0 0 45px rgba(220, 38, 38, 0.3) !important;
+      animation: pulseRed 2s ease-in-out infinite;
+    }
+    .completed-agent-glow {
+      border-color: #16a34a !important;
+      background: linear-gradient(135deg, rgba(22,101,52,0.2) 0%, rgba(20,5,8,0.9) 100%) !important;
+      box-shadow: 0 0 12px rgba(22, 163, 74, 0.3) !important;
+    }
+    @keyframes pulseRed {
+      0%, 100% { box-shadow: 0 0 10px rgba(220,38,38,0.4); }
+      50% { box-shadow: 0 0 30px rgba(220,38,38,0.9), 0 0 50px rgba(220,38,38,0.5); }
+    }
+    .custom-scroll {
+      scrollbar-width: thin;
+      scrollbar-color: #7f1d1d #140508;
+    }
+  </style>
+</head>
+<body class="bg-[#0a0a0a] text-clinical-100 min-h-screen">
+  <div id="root"></div>
+
+  <!-- Main Application Script -->
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+    // --- DISEASES DATABASE (36 Conditions across 10 Categories) ---
+    const DISEASE_CATEGORIES = [
+      'Endocrine', 'Cardiovascular', 'Respiratory', 'Digestive', 
+      'Skin', 'Neurological', 'Musculoskeletal', 'Nutritional', 'Eye', 'Urinary', 'Infectious', 'Mental Health'
+    ];
+
+    const DISEASES = [
+      // Endocrine
+      {
+        id: 'diabetes-t2', name: 'Type 2 Diabetes', category: 'Endocrine', riskLevel: 'high', icdCode: 'E11', prevalence: 'Very Common',
+        description: 'A chronic metabolic condition with insulin resistance and relative insulin deficiency resulting in persistently high blood sugar levels.',
+        symptoms: ['Frequent urination (polyuria)', 'Excessive thirst (polydipsia)', 'Unexplained weight loss', 'Increased hunger', 'Blurred vision', 'Slow-healing sores', 'Fatigue', 'Tingling in hands/feet'],
+        causes: ['Insulin resistance', 'Sedentary lifestyle', 'Obesity & high body fat', 'Genetic predisposition', 'Poor dietary habits (high refined carbs)'],
+        warningSigns: ['Blood glucose > 250 mg/dL', 'Ketoacidosis symptoms (fruity breath, nausea)', 'Sudden severe vision impairment', 'Non-healing foot ulcers with numbness'],
+        generalCare: ['Regular blood glucose self-monitoring', 'Low-glycemic Mediterranean or balanced diet', '150 min/week moderate aerobic exercise', 'Periodic HbA1c screening every 3–6 months', 'Daily foot checks'],
+        medicineIds: ['metformin', 'glimepiride', 'sitagliptin', 'empagliflozin']
+      },
+      {
+        id: 'hypothyroidism', name: 'Hypothyroidism', category: 'Endocrine', riskLevel: 'medium', icdCode: 'E03', prevalence: 'Common',
+        description: 'Underactive thyroid gland failing to generate adequate thyroid hormones, slowing cellular metabolism throughout the body.',
+        symptoms: ['Fatigue and lethargy', 'Unintended weight gain', 'Cold sensitivity', 'Constipation', 'Dry coarse skin & hair', 'Puffy face', 'Bradycardia', 'Depressed mood'],
+        causes: ["Hashimoto's thyroiditis (autoimmune)", 'Thyroid ablation or surgery', 'Certain medications (lithium, amiodarone)', 'Severe iodine deficiency'],
+        warningSigns: ['Myxedema coma (extreme hypothermia, stupor)', 'Severe bradycardia (<45 bpm)', 'Pericardial effusion signs'],
+        generalCare: ['Consistent daily morning thyroid hormone replacement', 'Routine TSH & Free T4 blood monitoring', 'Avoid excessive goitrogenic foods uncooked', 'Adequate dietary selenium/zinc'],
+        medicineIds: ['levothyroxine', 'liothyronine']
+      },
+      {
+        id: 'hyperthyroidism', name: 'Hyperthyroidism', category: 'Endocrine', riskLevel: 'high', icdCode: 'E05', prevalence: 'Moderate',
+        description: 'Excessive production of thyroid hormones resulting in hypermetabolic state with rapid heartbeat, weight loss, and tremulousness.',
+        symptoms: ['Rapid or irregular heartbeat (palpitations)', 'Rapid weight loss despite appetite', 'Heat intolerance & profuse sweating', 'Hand tremors', 'Anxiety & irritability', 'Exophthalmos (bulging eyes)'],
+        causes: ["Graves' disease (autoimmune)", 'Toxic multinodular goiter', 'Thyroiditis', 'Excessive iodine intake'],
+        warningSigns: ['Thyroid storm (high fever, severe tachycardia, delirium)', 'New onset atrial fibrillation', 'Severe visual field compromise from orbitopathy'],
+        generalCare: ['Avoid iodine-rich supplements unless directed', 'Monitor resting pulse and temperature', 'Stress management & adequate sleep', 'Ophthalmology evaluation if eye involvement'],
+        medicineIds: ['methimazole', 'propylthiouracil', 'propranolol-thyroid']
+      },
+      // Cardiovascular
+      {
+        id: 'hypertension', name: 'Hypertension (High Blood Pressure)', category: 'Cardiovascular', riskLevel: 'high', icdCode: 'I10', prevalence: 'Very Common',
+        description: 'Sustained elevation of systemic arterial blood pressure (≥130/80 mmHg), placing increased workload on the heart and vasculature.',
+        symptoms: ['Often completely asymptomatic', 'Occasional morning headaches', 'Lightheadedness', 'Shortness of breath on exertion', 'Facial flushing', 'Nosebleeds (severe episodes)'],
+        causes: ['High dietary sodium intake', 'Chronic mental stress', 'Arterial stiffening', 'Obesity', 'Lack of exercise', 'Genetic factors'],
+        warningSigns: ['BP > 180/120 mmHg (hypertensive crisis)', 'Chest tightness radiating to arm/jaw', 'Acute severe visual changes', 'Sudden focal neurological weakness (stroke warning)'],
+        generalCare: ['DASH diet (rich in fruits, vegetables, low sodium)', 'Limit alcohol and quit smoking', 'Maintain healthy body mass index', 'Daily home blood pressure logging', 'Regular cardiovascular checkups'],
+        medicineIds: ['amlodipine', 'losartan', 'atenolol', 'hydrochlorothiazide']
+      },
+      {
+        id: 'hypotension', name: 'Hypotension (Low Blood Pressure)', category: 'Cardiovascular', riskLevel: 'medium', icdCode: 'I95', prevalence: 'Common',
+        description: 'Blood pressure lower than 90/60 mmHg leading to inadequate cerebral perfusion and transient lightheadedness.',
+        symptoms: ['Dizziness upon standing', 'Fainting (syncope)', 'Blurred vision', 'Fatigue and weakness', 'Cold clammy skin', 'Lack of concentration'],
+        causes: ['Dehydration & heat exhaustion', 'Prolonged bed rest', 'Endocrine dysfunction (Addison\'s)', 'Cardiac arrhythmias', 'Overmedication with antihypertensives'],
+        warningSigns: ['Recurrent unheralded fainting', 'Signs of circulatory shock (pale, rapid weak pulse, confusion)', 'Cyanosis'],
+        generalCare: ['Increase fluid and electrolyte intake', 'Rise gradually from lying or seated positions', 'Consider medical compression stockings', 'Avoid long hot showers'],
+        medicineIds: ['fludrocortisone', 'midodrine']
+      },
+      {
+        id: 'high-cholesterol', name: 'Hypercholesterolemia (High Cholesterol)', category: 'Cardiovascular', riskLevel: 'high', icdCode: 'E78.0', prevalence: 'Very Common',
+        description: 'Elevated low-density lipoprotein (LDL) cholesterol and total cholesterol promoting plaque formation inside coronary and systemic arteries.',
+        symptoms: ['Silent/asymptomatic in early stages', 'Xanthomas (fatty skin nodules)', 'Xanthelasma around eyelids', 'Angina on heavy exertion (late stage)'],
+        causes: ['Diets high in saturated and trans fats', 'Genetic mutations (familial hypercholesterolemia)', 'Lack of physical activity', 'Smoking', 'Metabolic syndrome'],
+        warningSigns: ['Exertional chest pain or pressure', 'Transient ischemic symptoms', 'Claudication (leg pain while walking)'],
+        generalCare: ['High soluble fiber diet (oats, legumes, psyllium)', 'Substitute saturated fats with extra virgin olive oil', '30 minutes daily brisk walking', 'Fasting lipid panel testing every 6–12 months'],
+        medicineIds: ['atorvastatin', 'rosuvastatin', 'ezetimibe']
+      },
+      // Respiratory
+      {
+        id: 'asthma', name: 'Bronchial Asthma', category: 'Respiratory', riskLevel: 'high', icdCode: 'J45', prevalence: 'Very Common',
+        description: 'Chronic inflammatory airway disease featuring bronchial hyperresponsiveness, reversible airflow obstruction, and bronchospasm.',
+        symptoms: ['Wheezing expiratory sound', 'Shortness of breath', 'Chest tightness', 'Nocturnal coughing spells', 'Exercise-induced dyspnea'],
+        causes: ['Environmental allergens (pollen, dust mites, dander)', 'Air pollution & cold dry air', 'Viral respiratory infections', 'Occupational dust exposure', 'Stress'],
+        warningSigns: ['Severe breathlessness unable to complete full sentences', 'Cyanosis of lips or nails', 'Peak expiratory flow < 50% baseline', 'Silent chest (absence of wheeze in severe respiratory distress)'],
+        generalCare: ['Always carry prescribed quick-relief rescue inhaler', 'Use a spacer device for MDI inhalers', 'Monitor peak flow readings at home', 'Avoid known dust and mold triggers', 'Annual flu vaccination'],
+        medicineIds: ['salbutamol', 'budesonide-inhaler', 'montelukast', 'salmeterol']
+      },
+      {
+        id: 'bronchitis', name: 'Acute Bronchitis', category: 'Respiratory', riskLevel: 'medium', icdCode: 'J40', prevalence: 'Common',
+        description: 'Acute inflammation of the bronchial mucosa usually provoked by a primary viral respiratory tract infection.',
+        symptoms: ['Productive cough with clear/yellowish phlegm', 'Chest discomfort & burning', 'Low-grade fever', 'Sore throat & hoarseness', 'Fatigue and mild body aches'],
+        causes: ['Viral pathogens (influenza, rhinovirus, RSV)', 'Secondary bacterial pathogens', 'Inhalation of tobacco smoke or fumes'],
+        warningSigns: ['Cough persisting > 3 weeks', 'Hemoptysis (coughing up blood)', 'High spike fever (>38.5°C) with pleuritic chest pain', 'Dyspnea at rest'],
+        generalCare: ['Plenty of warm fluids & herbal teas', 'Steam inhalation & warm humidifiers', 'Adequate bed rest', 'Honey for cough soothing (adults)', 'Avoid secondhand smoke'],
+        medicineIds: ['amoxicillin', 'dextromethorphan', 'guaifenesin', 'salbutamol']
+      },
+      {
+        id: 'common-cold', name: 'Common Cold (Nasopharyngitis)', category: 'Respiratory', riskLevel: 'low', icdCode: 'J00', prevalence: 'Extremely Common',
+        description: 'Self-limiting viral upper respiratory tract infection predominantly targeting nasal mucosa and throat.',
+        symptoms: ['Sneezing', 'Rhinorrhea (runny or congested nose)', 'Sore scratchy throat', 'Mild headache', 'Low-grade malaise', 'Mild dry cough'],
+        causes: ['Rhinoviruses (over 100 serotypes)', 'Coronaviruses', 'Adenoviruses', 'Direct droplet transmission'],
+        warningSigns: ['Fever > 39°C', 'Symptoms failing to improve after 10–14 days', 'Severe localized sinus pain or earache (secondary bacterial infection)'],
+        generalCare: ['Nasal saline irrigation (neti pot or spray)', 'Warm salt water gargling', 'Rest and generous hydration', 'Hand hygiene to prevent spread'],
+        medicineIds: ['cetirizine', 'dextromethorphan', 'paracetamol', 'pseudoephedrine']
+      },
+      {
+        id: 'influenza', name: 'Influenza (Flu)', category: 'Respiratory', riskLevel: 'medium', icdCode: 'J11', prevalence: 'Seasonal',
+        description: 'Acute contagious viral illness caused by Influenza A or B viruses, marked by rapid onset of high fever and severe muscle aches.',
+        symptoms: ['Sudden high fever (38.5–40°C)', 'Severe diffuse myalgias (muscle aches)', 'Exhausting fatigue', 'Dry racking cough', 'Headache & chills'],
+        causes: ['Influenza virus type A or B', 'Aerosolized droplets from infected individuals'],
+        warningSigns: ['Difficulty breathing or shortness of breath', 'Chest pain or pressure', 'Persistent dizziness, confusion, or inability to stay awake', 'Cyanotic skin'],
+        generalCare: ['Strict bed rest during febrile phase', 'Generous oral hydration with electrolytes', 'Antiviral initiation within 48h if indicated', 'Isolate to protect household members'],
+        medicineIds: ['oseltamivir', 'paracetamol', 'ibuprofen']
+      },
+      {
+        id: 'sinusitis', name: 'Acute Rhinosinusitis', category: 'Respiratory', riskLevel: 'low', icdCode: 'J32', prevalence: 'Common',
+        description: 'Inflammatory swelling of paranasal sinus cavities obstructing natural mucus drainage pathways.',
+        symptoms: ['Facial pressure/pain over maxillary or frontal sinuses', 'Thick discolored nasal discharge', 'Nasal congestion', 'Reduced sense of smell', 'Upper dental pain', 'Halitosis'],
+        causes: ['Post-viral secondary bacterial infection', 'Allergic mucosal edema', 'Anatomical septum deviation', 'Nasal polyps'],
+        warningSigns: ['Periorbital swelling or redness around eye', 'Severe unrelenting forehead headache with stiff neck', 'Double vision or visual acuity change'],
+        generalCare: ['Warm facial compresses 3–4 times daily', 'Hypertonic saline nasal irrigations', 'Hydration to thin mucus', 'Elevate head while sleeping'],
+        medicineIds: ['amoxicillin-clav', 'fluticasone-nasal', 'cetirizine', 'pseudoephedrine']
+      },
+      {
+        id: 'allergic-rhinitis', name: 'Allergic Rhinitis (Hay Fever)', category: 'Respiratory', riskLevel: 'low', icdCode: 'J30', prevalence: 'Very Common',
+        description: 'IgE-mediated hypersensitivity reaction of the nasal mucosal lining upon exposure to airborne allergens.',
+        symptoms: ['Paroxysmal bouts of sneezing', 'Pruritus (itching) of nose, palate, and eyes', 'Clear watery nasal discharge', 'Nasal congestion', 'Allergic shiners (dark circles under eyes)'],
+        causes: ['Tree, grass, and weed pollens', 'Dust mite feces', 'Animal dander (cats/dogs)', 'Indoor mold spores'],
+        warningSigns: ['Severe asthma flare triggered by allergy', 'Chronic sinus drainage leading to recurrent otitis media'],
+        generalCare: ['HEPA filtration in bedroom', 'Keep windows closed during peak pollen hours (morning)', 'Wash bedding weekly in 60°C water', 'Shower and change clothes after outdoor exposure'],
+        medicineIds: ['cetirizine', 'loratadine', 'fluticasone-nasal', 'montelukast']
+      },
+      // Digestive
+      {
+        id: 'gerd', name: 'GERD (Gastroesophageal Reflux)', category: 'Digestive', riskLevel: 'medium', icdCode: 'K21', prevalence: 'Very Common',
+        description: 'Retrograde flow of gastric acid and pepsin into the esophagus causing mucosal injury and burning pain.',
+        symptoms: ['Retrosternal heartburn (burning behind breastbone)', 'Acid regurgitation into mouth', 'Dysphagia (difficulty swallowing)', 'Globus sensation (lump in throat)', 'Chronic dry cough'],
+        causes: ['Lower esophageal sphincter (LES) laxity', 'Hiatal hernia', 'Obesity and abdominal pressure', 'Late-night eating', 'Trigger foods (coffee, citrus, chocolate, fried food)'],
+        warningSigns: ['Progressive difficulty swallowing solid food', 'Vomiting blood or coffee-ground material', 'Black tarry stools (melena)', 'Unintended weight loss'],
+        generalCare: ['Elevate head of bed by 15–20 cm with bed risers', 'Avoid lying down within 3 hours after meals', 'Eat smaller, low-fat meals', 'Avoid tight abdominal garments', 'Weight reduction'],
+        medicineIds: ['omeprazole', 'pantoprazole', 'ranitidine', 'antacid']
+      },
+      {
+        id: 'gastritis', name: 'Gastritis (Stomach Inflammation)', category: 'Digestive', riskLevel: 'medium', icdCode: 'K29', prevalence: 'Common',
+        description: 'Inflammatory breakdown of the protective mucus layer lining the stomach wall.',
+        symptoms: ['Epigastric gnawing or burning stomach pain', 'Nausea and episodic vomiting', 'Postprandial bloating and early fullness', 'Loss of appetite', 'Belching'],
+        causes: ['Helicobacter pylori bacterial colonization', 'Frequent NSAID use (ibuprofen, aspirin)', 'Excessive alcohol intake', 'Severe physiological stress'],
+        warningSigns: ['Hematemesis (vomiting blood)', 'Melena (dark tarry stool)', 'Severe persistent epigastric pain', 'Dizziness from occult blood loss'],
+        generalCare: ['Eliminate irritants: alcohol, smoking, strong spices', 'Avoid NSAIDs; use alternatives if approved', 'Bland diet with easily digestible foods', 'H. pylori eradication if tested positive'],
+        medicineIds: ['omeprazole', 'antacid', 'sucralfate', 'amoxicillin']
+      },
+      {
+        id: 'acidity', name: 'Hyperacidity & Functional Dyspepsia', category: 'Digestive', riskLevel: 'low', icdCode: 'K30', prevalence: 'Extremely Common',
+        description: 'Transient overproduction or impaired buffering of gastric acid causing episodic upper abdominal distress.',
+        symptoms: ['Epigastric burn', 'Sour taste in mouth', 'Excessive gas and belching', 'Abdominal heaviness after eating', 'Nausea'],
+        causes: ['Irregular fasting and meal schedules', 'High intake of spicy, deep-fried snacks', 'Stress & sleep deprivation', 'Excessive caffeine/carbonated beverages'],
+        warningSigns: ['Pain radiating to back or neck (rule out cardiac causes)', 'Failure of symptoms to respond to antacids after 14 days'],
+        generalCare: ['Maintain regular meal intervals without skipping', 'Sip cold milk or coconut water for soothing relief', 'Practice mindful chewing', 'Avoid lying flat immediately after food'],
+        medicineIds: ['antacid', 'omeprazole', 'ranitidine']
+      },
+      {
+        id: 'diarrhea', name: 'Acute Gastroenteritis (Diarrhea)', category: 'Digestive', riskLevel: 'medium', icdCode: 'A09', prevalence: 'Very Common',
+        description: 'Frequent passage of abnormally loose or watery stools resulting in rapid fluid and electrolyte depletion.',
+        symptoms: ['Watery loose bowel movements (≥3/day)', 'Abdominal cramping and griping pain', 'Nausea and vomiting', 'Low-grade fever', 'Urgent tenesmus'],
+        causes: ['Viral pathogens (Rotavirus, Norovirus)', 'Bacterial food poisoning (Salmonella, E. coli, Campylobacter)', 'Parasitic infection (Giardia)', 'Contaminated drinking water'],
+        warningSigns: ['Severe dehydration (anuria, sunken eyes, dry tongue, confusion)', 'Visible red blood or pus in stool', 'High fever (>38.8°C)', 'Inability to keep liquids down for >12h'],
+        generalCare: ['Prompt replacement of lost fluids with WHO-standard ORS', 'BRAT diet (Bananas, Rice, Applesauce, Toast)', 'Avoid dairy, caffeine, and greasy meals', 'Thorough handwashing before food preparation'],
+        medicineIds: ['oral-rehydration', 'loperamide', 'metronidazole', 'zinc-diarrhea']
+      },
+      {
+        id: 'constipation', name: 'Functional Constipation', category: 'Digestive', riskLevel: 'low', icdCode: 'K59.0', prevalence: 'Very Common',
+        description: 'Difficulty or infrequency in defecation (<3 bowel movements per week) characterized by hard, dry stools.',
+        symptoms: ['Straining during defecation', 'Hard, lumpy, painful stools', 'Sensation of incomplete rectal evacuation', 'Abdominal bloating and fullness'],
+        causes: ['Low dietary fiber intake', 'Inadequate daily water consumption', 'Sedentary habits', 'Ignoring normal defecation urges', 'Medication side effects (iron, opioids)'],
+        warningSigns: ['Rectal bleeding or dark stool', 'Sudden change in bowel pattern after age 50', 'Associated severe abdominal distension & inability to pass flatus (obstruction)'],
+        generalCare: ['Target 25–35 grams of daily dietary fiber (whole grains, vegetables, flaxseeds)', 'Drink 2–2.5 liters of clean water daily', 'Engage in daily walking or physical activity', 'Establish a consistent morning toilet routine'],
+        medicineIds: ['lactulose', 'bisacodyl', 'psyllium-husk', 'senna']
+      },
+      // Skin
+      {
+        id: 'acne', name: 'Acne Vulgaris', category: 'Skin', riskLevel: 'low', icdCode: 'L70', prevalence: 'Extremely Common',
+        description: 'Inflammatory follicular disorder of pilosebaceous units driven by androgenic sebum production, hyperkeratinization, and Cutibacterium acnes.',
+        symptoms: ['Comedones (blackheads and whiteheads)', 'Inflammatory red papules', 'Pus-filled pustules', 'Deep painful cystic nodules', 'Post-inflammatory erythema & scarring'],
+        causes: ['Excessive sebum secretion', 'Follicular duct plugging with dead keratinocytes', 'Bacterial proliferation (C. acnes)', 'Hormonal fluctuations (puberty, PCOS, cycle)'],
+        warningSigns: ['Extensive severe nodulocystic lesions prone to permanent scarring', 'Significant psycho-emotional distress or social withdrawal'],
+        generalCare: ['Gentle pH-balanced facial cleanser twice daily', 'Use oil-free, non-comedogenic cosmetics & sunscreens', 'Never squeeze, pop, or pick lesions', 'Wash hair frequently to prevent oil transfer'],
+        medicineIds: ['benzoyl-peroxide', 'tretinoin', 'clindamycin-topical', 'doxycycline']
+      },
+      {
+        id: 'eczema', name: 'Atopic Dermatitis (Eczema)', category: 'Skin', riskLevel: 'medium', icdCode: 'L20', prevalence: 'Common',
+        description: 'Chronic, pruritic inflammatory skin disorder resulting from epidermal skin barrier defect and immune dysregulation.',
+        symptoms: ['Intense, agonizing itch (pruritus, especially at night)', 'Erythematous scaly patches (flexural folds: elbows, knees)', 'Excoriations and weeping serous fluid', 'Lichenification (thickened leathery skin)'],
+        causes: ['Filaggrin gene barrier dysfunction', 'Environmental irritants (detergents, wool, fragrances)', 'Allergen triggers', 'Climate extremes'],
+        warningSigns: ['Secondary bacterial infection (yellow honey-colored crusts, spreading warmth)', 'Eczema herpeticum (painful widespread blisters with fever)'],
+        generalCare: ['Apply rich ceramide emollient within 3 minutes of lukewarm bathing ("soak and seal")', 'Wear 100% loose breathable cotton fabrics', 'Keep nails trimmed short to minimize excoriation', 'Use fragrance-free mild cleansers'],
+        medicineIds: ['hydrocortisone-cream', 'tacrolimus-topical', 'cetirizine', 'dupilumab']
+      },
+      {
+        id: 'psoriasis', name: 'Psoriasis Vulgaris (Plaque Psoriasis)', category: 'Skin', riskLevel: 'medium', icdCode: 'L40', prevalence: 'Moderate',
+        description: 'Autoimmune hyperproliferative skin disease causing rapid epidermal turnover and characteristic silvery scale plaques.',
+        symptoms: ['Sharply demarcated red plaques with silvery-white micaceous scales', 'Pitting, oil-drop discoloration, and thickening of nails', 'Itching or stinging sensation', 'Scalp plaques', 'Associated joint stiffness (psoriatic arthritis)'],
+        causes: ['T-cell driven autoimmune cascade (IL-17, IL-23, TNF-alpha)', 'Genetic susceptibility', 'Triggers: strep infection, skin trauma (Koebner), stress, beta-blockers'],
+        warningSigns: ['Erythrodermic flare (>90% body surface area involvement with shivering)', 'Generalized pustular psoriasis with systemic fever', 'Rapidly progressive joint deformity'],
+        generalCare: ['Generous daily moisturization', 'Controlled natural sunlight exposure (UVB)', 'Avoid alcohol and tobacco consumption', 'Maintain healthy body weight to reduce inflammatory load'],
+        medicineIds: ['methotrexate-pso', 'calcipotriol', 'betamethasone-topical', 'adalimumab']
+      },
+      {
+        id: 'dermatitis-contact', name: 'Contact Dermatitis', category: 'Skin', riskLevel: 'low', icdCode: 'L23', prevalence: 'Common',
+        description: 'Inflammatory reaction of the skin caused by direct chemical irritation or a delayed Type IV cell-mediated allergic reaction.',
+        symptoms: ['Erythema and acute swelling localized to contact site', 'Vesicles and weeping blisters', 'Intense itching or stinging', 'Dry cracked fissured skin'],
+        causes: ['Allergens: Nickel, latex, fragrance mixes, poison ivy (urushiol)', 'Irritants: Harsh industrial soaps, solvents, acids/alkalis'],
+        warningSigns: ['Facial or periorbital involvement with eyelid swelling', 'Signs of secondary bacterial cellulitis (spreading red streaks)'],
+        generalCare: ['Strictly identify and avoid trigger material', 'Cool wet compresses to soothe acute weeping lesions', 'Barrier creams when handling household cleaning agents', 'Wash skin thoroughly immediately after accidental contact'],
+        medicineIds: ['hydrocortisone-cream', 'cetirizine', 'calamine-lotion']
+      },
+      {
+        id: 'fungal-skin', name: 'Tinea (Fungal Skin Infection)', category: 'Skin', riskLevel: 'low', icdCode: 'B35', prevalence: 'Very Common',
+        description: 'Superficial cutaneous infection caused by keratin-loving dermatophyte fungi (Trichophyton, Microsporum).',
+        symptoms: ['Annular (ring-shaped) lesions with raised scaly red active border and clear center (ringworm)', 'Macerated, peeling, itchy skin between toes (athlete\'s foot)', 'Pruritic rash in groin creases (jock itch)', 'Scalp patches with brittle hair loss'],
+        causes: ['Dermatophyte fungus transmission from infected people, pets, or soil', 'Warm, moist occlusive environments (sweaty socks, wet gym gear)'],
+        warningSigns: ['Secondary bacterial cellulitis from deep scratching', 'Spreading infection in diabetic or immunocompromised individual'],
+        generalCare: ['Keep infected skin thoroughly clean and dry', 'Never share towels, socks, shoes, or hairbrushes', 'Wear moisture-wicking cotton socks and open footwear', 'Continue topical antifungal for 1–2 weeks past visible clearance'],
+        medicineIds: ['clotrimazole-topical', 'terbinafine-topical', 'fluconazole', 'ketoconazole-shampoo']
+      },
+      // Neurological
+      {
+        id: 'migraine', name: 'Migraine Headache', category: 'Neurological', riskLevel: 'medium', icdCode: 'G43', prevalence: 'Common',
+        description: 'Neurovascular primary headache disorder marked by recurrent episodes of severe throbbing unilateral pain and sensory hypersensitivity.',
+        symptoms: ['Moderate to severe pulsating/throbbing headache (often unilateral)', 'Nausea and vomiting', 'Photophobia (light sensitivity)', 'Phonophobia (sound sensitivity)', 'Visual aura (flashing lights, zigzag lines, scotoma) in ~25% of cases'],
+        causes: ['Trigeminal nerve pathway activation & CGRP release', 'Genetic predisposition', 'Triggers: stress letdown, sleep disruption, aged cheese, red wine, bright lights, hormonal shifts'],
+        warningSigns: ['Sudden explosive "thunderclap" headache reaching max intensity in seconds', 'Headache accompanied by persistent motor paralysis or dysarthria', 'Headache with high fever and neck stiffness (meningism)'],
+        generalCare: ['Rest in a quiet, dark room with cold forehead pack', 'Keep a structured headache diary to identify individual triggers', 'Maintain consistent sleep and meal schedules', 'Generous hydration at first symptom onset'],
+        medicineIds: ['sumatriptan', 'ibuprofen', 'paracetamol', 'propranolol-migraine', 'topiramate']
+      },
+      {
+        id: 'tension-headache', name: 'Tension-Type Headache', category: 'Neurological', riskLevel: 'low', icdCode: 'G44.2', prevalence: 'Extremely Common',
+        description: 'The most prevalent primary headache type, characterized by dull, non-pulsatile bilateral pressure sensation like a tight band around the head.',
+        symptoms: ['Bilateral dull, aching, band-like constriction around forehead/occiput', 'Tender pericranial and neck/shoulder muscles', 'Mild light sensitivity (without nausea)', 'No aggravation by routine physical activity'],
+        causes: ['Emotional stress & mental strain', 'Prolonged poor desk/screen posture ("tech neck")', 'Eye strain from uncorrected refractive error', 'Sleep deprivation & teeth grinding (bruxism)'],
+        warningSigns: ['New onset daily worsening headache in individual > 50 years', 'Headache awakened from sleep accompanied by projectile vomiting'],
+        generalCare: ['Warm heating pad or gentle neck/shoulder massage', 'Take 5-minute posture and eye rest breaks every 45 minutes of screen work', 'Practice deep breathing relaxation exercises', 'Adequate hydration'],
+        medicineIds: ['ibuprofen', 'paracetamol', 'aspirin', 'amitriptyline']
+      },
+      // Musculoskeletal
+      {
+        id: 'arthritis', name: 'Osteoarthritis (Degenerative Joint Disease)', category: 'Musculoskeletal', riskLevel: 'medium', icdCode: 'M15', prevalence: 'Common',
+        description: 'Degenerative joint disease resulting in progressive loss of articular cartilage, subchondral bone remodeling, and osteophyte formation.',
+        symptoms: ['Deep aching joint pain aggravated by weight-bearing', 'Morning joint stiffness lasting < 30 minutes', 'Joint crepitus (grating/crackling sensation on movement)', 'Bony enlargement (Heberden\'s & Bouchard\'s nodes)', 'Reduced range of motion'],
+        causes: ['Age-related wear and tear of cartilage', 'Excess mechanical load (obesity on knees/hips)', 'Prior joint trauma or ligament tears', 'Repetitive occupational stress'],
+        warningSigns: ['Acute hot, red, swollen joint with fever (rule out septic arthritis)', 'Inability to bear any weight on joint (fracture/collapse)'],
+        generalCare: ['Low-impact aerobic exercise: swimming, water aerobics, stationary cycling', 'Quadriceps and periarticular muscle strengthening', 'Weight reduction to diminish joint load', 'Hot packs before exercise; cold packs after flare'],
+        medicineIds: ['ibuprofen', 'diclofenac-gel', 'celecoxib', 'glucosamine']
+      },
+      {
+        id: 'muscle-strain', name: 'Acute Muscle Strain', category: 'Musculoskeletal', riskLevel: 'low', icdCode: 'M62.6', prevalence: 'Very Common',
+        description: 'Mechanical overstretching or partial tearing of muscle fibers or attached tendon units.',
+        symptoms: ['Sudden sharp pain during exertion or heavy lifting', 'Local muscle tenderness & swelling', 'Muscle spasms and stiffness', 'Ecchymosis (bruising) developing after 24–48 hours', 'Weakness when contracting muscle'],
+        causes: ['Inadequate warm-up before athletic activity', 'Lifting heavy loads with improper spinal biomechanics', 'Sudden acceleration/deceleration movements', 'Muscle fatigue & dehydration'],
+        warningSigns: ['Audible "pop" accompanied by immediate complete loss of muscle function (complete tendon rupture)', 'Severe numbness or paresthesia distal to injury'],
+        generalCare: ['R.I.C.E. protocol for first 48 hours: Rest, Ice (15–20 min), Gentle compression, Elevation', 'Avoid active stretching during acute inflammatory phase', 'Gradual active range-of-motion recovery after day 3', 'Proper lifting posture using leg muscles'],
+        medicineIds: ['ibuprofen', 'diclofenac-gel', 'cyclobenzaprine']
+      },
+      // Nutritional
+      {
+        id: 'iron-deficiency-anaemia', name: 'Iron Deficiency Anaemia', category: 'Nutritional', riskLevel: 'medium', icdCode: 'D50', prevalence: 'Very Common',
+        description: 'Inadequate iron stores impeding hemoglobin synthesis, leading to microcytic hypochromic red blood cells and reduced tissue oxygenation.',
+        symptoms: ['Pervasive fatigue & generalized weakness', 'Pale conjunctiva, tongue, and skin (pallor)', 'Exertional dyspnea & tachycardia', 'Brittle spoon-shaped nails (koilonychia)', 'Pica (cravings for ice, dirt, or chalk)', 'Cold extremities', 'Angular cheilitis (mouth corner cracks)'],
+        causes: ['Chronic blood loss (heavy menses, peptic ulcer, hemorrhoids, occult colon lesion)', 'Inadequate dietary iron intake', 'Malabsorption (celiac disease, post-bariatric surgery)', 'Increased demand (pregnancy)'],
+        warningSigns: ['Resting angina or palpitations with tachycardia', 'Syncope or severe postural dizziness', 'Hemoglobin < 7.0 g/dL'],
+        generalCare: ['Iron-rich diet: lentils, spinach, lean red meat, pumpkin seeds', 'Consume Vitamin C (citrus fruits) alongside iron to boost absorption', 'Avoid drinking tea or coffee within 1 hour of meals (tannins inhibit absorption)', 'Investigate underlying source of blood loss'],
+        medicineIds: ['ferrous-sulfate', 'ferrous-gluconate', 'iv-iron']
+      },
+      {
+        id: 'vitamin-d-deficiency', name: 'Vitamin D Deficiency', category: 'Nutritional', riskLevel: 'medium', icdCode: 'E55', prevalence: 'Extremely Common',
+        description: 'Insufficient levels of 25-hydroxyvitamin D compromising intestinal calcium absorption and skeletal mineralization.',
+        symptoms: ['Diffuse deep bone and lower back aches', 'Proximal muscle weakness & heaviness in legs', 'Chronic unexplained fatigue', 'Frequent viral respiratory infections', 'Depressed mood (seasonal affective tendency)', 'Impaired wound healing'],
+        causes: ['Inadequate direct cutaneous sun (UVB) exposure', 'Darker skin phototypes residing in high latitudes', 'Malabsorption syndromes', 'Chronic kidney or liver disease'],
+        warningSigns: ['Osteomalacic non-traumatic stress fractures', 'Severe hypocalcemia manifesting as tetany, carpopedal spasm, or numbness around mouth'],
+        generalCare: ['15–20 minutes midday sun exposure on arms and legs 3–4 times weekly', 'Consume fortified milk, egg yolks, and fatty cold-water fish (salmon, mackerel)', 'Periodic serum 25(OH)D blood testing', 'Pair with adequate dietary calcium intake'],
+        medicineIds: ['vitamin-d3', 'calcitriol']
+      },
+      {
+        id: 'vitamin-b12-deficiency', name: 'Vitamin B12 Deficiency', category: 'Nutritional', riskLevel: 'medium', icdCode: 'E53.8', prevalence: 'Common',
+        description: 'Cobalamin deficiency leading to megaloblastic anemia, demyelination of the spinal cord (subacute combined degeneration), and neurological deficits.',
+        symptoms: ['Symmetrical numbness and tingling in feet/hands (peripheral neuropathy)', 'Unsteady, wide-based gait and balance loss', 'Beefy red smooth sore tongue (glossitis)', 'Fatigue and lightheadedness', 'Memory loss, brain fog, and irritability'],
+        causes: ['Autoimmune pernicious anemia (anti-intrinsic factor antibodies)', 'Strict long-term vegan diet without fortification', 'Chronic use of Metformin or Proton Pump Inhibitors (PPIs)', 'Ileal disease or surgical resection'],
+        warningSigns: ['Progressive difficulty walking or severe ataxia', 'Severe mood psychosis or acute cognitive decline', 'Profound macrocytic anemia'],
+        generalCare: ['Nutritional sources: dairy products, eggs, fish, fortified nutritional yeast', 'Lifelong parenteral/sublingual supplementation if absorption is impaired', 'Routine monitoring of complete blood count and methylmalonic acid'],
+        medicineIds: ['cyanocobalamin', 'methylcobalamin']
+      },
+      // Eye
+      {
+        id: 'conjunctivitis', name: 'Acute Conjunctivitis (Pink Eye)', category: 'Eye', riskLevel: 'low', icdCode: 'H10', prevalence: 'Very Common',
+        description: 'Inflammation of the transparent bulbar and palpebral conjunctiva covering the white sclera and inner eyelids.',
+        symptoms: ['Pink/red scleral injection', 'Gritty foreign-body sensation', 'Thick yellow/green discharge with morning eyelid crusted shut (bacterial)', 'Watery discharge with preauricular node swelling (viral)', 'Intense bilateral itching and tearing (allergic)'],
+        causes: ['Adenovirus (highly contagious viral)', 'Staphylococcus, Streptococcus, Haemophilus (bacterial)', 'Airborne pollen, dust, pet dander (allergic)'],
+        warningSigns: ['Severe deep ocular pain', 'Significant reduction in visual acuity', 'Marked photophobia (corneal involvement/keratitis)', 'Copious hyperpurulent discharge in neonate'],
+        generalCare: ['Clean eyelid crusting with separate clean warm moist cotton balls from inner to outer corner', 'Strict handwashing after touching face', 'Discontinue contact lens use immediately until 48h after complete recovery', 'Do not share pillowcases or face towels'],
+        medicineIds: ['chloramphenicol-eye', 'sodium-cromoglicate-eye', 'artificial-tears', 'olopatadine-eye']
+      },
+      {
+        id: 'dry-eye', name: 'Dry Eye Disease (Keratoconjunctivitis Sicca)', category: 'Eye', riskLevel: 'low', icdCode: 'H04.1', prevalence: 'Very Common',
+        description: 'Multifactorial disease of the ocular surface characterized by a loss of tear film homeostasis and tear hyperosmolarity.',
+        symptoms: ['Stinging, burning, or scratchy ocular sensation', 'Stringy mucus in or around the eyes', 'Reflex excessive tearing provoked by wind or smoke', 'Eye fatigue after reading or screen time', 'Transient blurred vision that clears with blinking'],
+        causes: ['Decreased tear secretion (aging, Sjögren\'s syndrome)', 'Meibomian gland dysfunction (evaporative)', 'Excessive screen use with reduced blink rate', 'Low-humidity air conditioning'],
+        warningSigns: ['Severe unremitting pain or redness indicating corneal ulceration', 'Persistent blurred vision'],
+        generalCare: ['Adhere to the 20-20-20 rule: Every 20 minutes, look 20 feet away for 20 seconds and deliberately blink', 'Place indoor desktop humidifiers in workspace', 'Warm eyelid compresses for 5 minutes daily', 'Avoid directing car heating/AC vents straight at face'],
+        medicineIds: ['artificial-tears', 'cyclosporine-eye', 'lifitegrast']
+      },
+      // Urinary
+      {
+        id: 'uti', name: 'Urinary Tract Infection (Cystitis)', category: 'Urinary', riskLevel: 'medium', icdCode: 'N39.0', prevalence: 'Very Common',
+        description: 'Bacterial colonization and inflammatory invasion of the lower urinary tract mucosa (bladder and urethra).',
+        symptoms: ['Dysuria (burning, scalding pain upon urination)', 'Urinary frequency and extreme urgency', 'Suprapubic lower abdominal aching', 'Cloudy, strong-smelling urine', 'Microscopic or visible blood in urine (hematuria)'],
+        causes: ['Ascending uropathogenic Escherichia coli (UPEC) from gastrointestinal tract', 'Female anatomical shorter urethra', 'Sexual intercourse', 'Infrequent voiding & dehydration'],
+        warningSigns: ['High spiking fever with rigors, chills, and flank/back pain (ascending acute pyelonephritis)', 'Nausea and persistent vomiting', 'Confusion in elderly patients'],
+        generalCare: ['Drink 2.5–3 liters of water daily to flush bacteria', 'Void bladder promptly when urge occurs and immediately post-coitus', 'Wipe strictly from front to back after toileting', 'Complete full course of prescribed antimicrobial therapy'],
+        medicineIds: ['nitrofurantoin', 'trimethoprim', 'ciprofloxacin-uti', 'phenazopyridine']
+      },
+      // Infectious
+      {
+        id: 'dengue-fever', name: 'Dengue Fever', category: 'Infectious', riskLevel: 'critical', icdCode: 'A90', prevalence: 'Tropical / Seasonal',
+        description: 'Arboviral illness transmitted by infected Aedes mosquitoes, capable of progressing to life-threatening plasma leakage and severe thrombocytopenia.',
+        symptoms: ['Sudden high-grade fever (39–40°C)', 'Severe retro-orbital pain (behind the eyes)', 'Excruciating "breakbone" joint and muscle aches', 'Measles-like flushing erythematous rash', 'Nausea and anorexia', 'Mild mucosal gum or nose bleeding'],
+        causes: ['Dengue Virus (DENV 1, 2, 3, 4)', 'Bite of female Aedes aegypti or Aedes albopictus mosquito'],
+        warningSigns: ['Severe persistent abdominal pain', 'Persistent vomiting (>3 times/24h)', 'Bleeding from mucosa (gums, nose, melena, hematuria)', 'Extreme lethargy, restlessness, or altered sensorium', 'Sudden drop in platelet count with hematocrit rise (plasma leakage)'],
+        generalCare: ['Use Paracetamol exclusively for fever/pain — NEVER take Aspirin or Ibuprofen (which increase bleeding danger)', 'Generous oral fluid intake (ORS, tender coconut water, clear soups)', 'Strict daily platelet and hematocrit laboratory monitoring during critical defervescence phase', 'Mosquito net protection to stop virus transmission'],
+        medicineIds: ['paracetamol', 'oral-rehydration']
+      },
+      {
+        id: 'chicken-pox', name: 'Chickenpox (Varicella)', category: 'Infectious', riskLevel: 'medium', icdCode: 'B01', prevalence: 'Common (Vaccine-preventable)',
+        description: 'Highly contagious viral infection characterized by successive crops of pruritic vesicular eruptions transforming into scabs.',
+        symptoms: ['Itchy rash progressing: macules → papules → fluid-filled "dewdrops on rose petal" vesicles → crusts', 'Moderate fever & malaise', 'Headache and loss of appetite', 'Lesions in varied stages of evolution across trunk, face, and scalp'],
+        causes: ['Varicella-Zoster Virus (VZV)', 'Airborne respiratory droplet and direct lesion contact transmission'],
+        warningSigns: ['Secondary bacterial impetigo (spreading erythema, warmth, pus in vesicles)', 'Persistent high fever > 4 days', 'Difficulty breathing or persistent cough (varicella pneumonia)', 'Stumbling gait or neurological confusion (cerebellitis)'],
+        generalCare: ['Strict isolation until every single vesicle has crusted over completely', 'Tepid oatmeal baths and Calamine lotion for itch relief', 'Keep fingernails cut short to prevent secondary skin infections from scratching', 'NEVER administer Aspirin to children (risk of fatal Reye\'s syndrome)'],
+        medicineIds: ['acyclovir', 'cetirizine', 'calamine-lotion', 'paracetamol']
+      },
+      // Mental Health
+      {
+        id: 'anxiety-disorder', name: 'Generalized Anxiety Disorder (GAD)', category: 'Mental Health', riskLevel: 'medium', icdCode: 'F41.1', prevalence: 'Very Common',
+        description: 'Persistent, pervasive, and disproportionate worry and apprehension about everyday circumstances lasting ≥ 6 months.',
+        symptoms: ['Excessive, uncontrollable worry', 'Restlessness or feeling on edge', 'Easy fatigability', 'Impaired concentration or mind going blank', 'Muscle tension (neck/jaw clenching)', 'Sleep-onset insomnia and restless sleep'],
+        causes: ['Neurotransmitter imbalances (serotonin, GABA, norepinephrine)', 'Genetic predisposition', 'Chronic psychological stress and past trauma', 'Excessive caffeine/stimulant intake'],
+        warningSigns: ['Acute panic attacks with severe chest palpitations and feeling of impending doom', 'Emergence of severe depressive symptoms or suicidal ideation'],
+        generalCare: ['Cognitive Behavioral Therapy (CBT) techniques and thought restructuring', 'Daily progressive muscle relaxation & diaphragmatic breathing', 'Regular aerobic exercise (boosts natural endorphins)', 'Reduce caffeine and avoid alcohol', 'Structured daily routine'],
+        medicineIds: ['escitalopram', 'sertraline', 'buspirone', 'alprazolam']
+      },
+      {
+        id: 'depression', name: 'Major Depressive Disorder', category: 'Mental Health', riskLevel: 'high', icdCode: 'F32', prevalence: 'Very Common',
+        description: 'Serious mood disorder marked by persistent sadness, profound emptiness, loss of interest, and executive dysfunction.',
+        symptoms: ['Depressed mood for most of the day, nearly every day', 'Anhedonia (total loss of interest in pleasurable activities)', 'Significant unintentional weight/appetite shifts', 'Insomnia or hypersomnia', 'Psychomotor agitation or slowing', 'Overwhelming fatigue', 'Feelings of worthlessness or excessive inappropriate guilt', 'Difficulty concentrating'],
+        causes: ['Complex biological, genetic, environmental, and neurochemical factors', 'Major adverse life events and chronic stress', 'Chronic physical illness'],
+        warningSigns: ['Active suicidal ideation, intent, or self-harm gestures (REQUIRE IMMEDIATE EMERGENCY CRISIS INTERVENTION)', 'Psychotic symptoms (delusions of guilt, auditory hallucinations)', 'Total self-neglect and refusal of hydration/food'],
+        generalCare: ['Seek comprehensive professional psychiatric and psychotherapeutic evaluation', 'Engage in gentle, non-judgmental daily physical movement', 'Maintain contact with supportive family, friends, or peer support groups', 'Establish a consistent sleep schedule', 'If in crisis, reach out to local emergency helplines immediately'],
+        medicineIds: ['escitalopram', 'sertraline', 'fluoxetine', 'venlafaxine']
+      }
+    ];
+
+    // --- MEDICINES DATABASE ---
+    const MEDICINES = {
+      metformin: { id: 'metformin', name: 'Metformin', genericName: 'Metformin HCl', form: 'Tablet (Oral)', commonStrengths: ['500 mg', '850 mg', '1000 mg'], referenceFrequency: '2–3 times daily with meals', purpose: 'First-line biguanide reducing hepatic glucose output and enhancing peripheral insulin sensitivity.', precautions: ['Contraindicated in severe renal impairment (eGFR < 30)', 'Hold 48h before iodinated radiocontrast procedures', 'Rare risk of lactic acidosis', 'May cause transient GI nausea/diarrhea', 'Check B12 levels on long-term therapy'], relatedDiseases: ['diabetes-t2'], category: 'Antidiabetic' },
+      glimepiride: { id: 'glimepiride', name: 'Glimepiride', genericName: 'Glimepiride', form: 'Tablet (Oral)', commonStrengths: ['1 mg', '2 mg', '4 mg'], referenceFrequency: 'Once daily with first substantial meal of the day', purpose: 'Second-generation sulfonylurea stimulating pancreatic beta-cell insulin secretion.', precautions: ['Risk of hypoglycemia — carry fast-acting glucose', 'May promote mild weight gain', 'Use cautiously in hepatic or renal impairment', 'Avoid skipping meals'], relatedDiseases: ['diabetes-t2'], category: 'Antidiabetic' },
+      sitagliptin: { id: 'sitagliptin', name: 'Sitagliptin', genericName: 'Sitagliptin Phosphate', form: 'Tablet (Oral)', commonStrengths: ['25 mg', '50 mg', '100 mg'], referenceFrequency: 'Once daily with or without food', purpose: 'DPP-4 inhibitor enhancing endogenous incretin levels in a glucose-dependent manner.', precautions: ['Adjust dose in moderate-to-severe renal disease', 'Discontinue if persistent severe abdominal pain occurs (pancreatitis warning)', 'Low intrinsic risk of hypoglycemia when used as monotherapy'], relatedDiseases: ['diabetes-t2'], category: 'Antidiabetic' },
+      empagliflozin: { id: 'empagliflozin', name: 'Empagliflozin', genericName: 'Empagliflozin', form: 'Tablet (Oral)', commonStrengths: ['10 mg', '25 mg'], referenceFrequency: 'Once daily in the morning', purpose: 'SGLT2 inhibitor promoting urinary glucose excretion with cardiovascular & renal protective benefits.', precautions: ['Risk of mycotic genital infections and UTIs', 'Maintain good hydration', 'Euglycemic diabetic ketoacidosis risk during acute illness or surgery', 'Do not initiate if eGFR < 20'], relatedDiseases: ['diabetes-t2'], category: 'Antidiabetic' },
+      levothyroxine: { id: 'levothyroxine', name: 'Levothyroxine', genericName: 'Levothyroxine Sodium (T4)', form: 'Tablet (Oral)', commonStrengths: ['25 mcg', '50 mcg', '75 mcg', '100 mcg', '125 mcg'], referenceFrequency: 'Once daily on empty stomach 30–60 min before breakfast with full glass of water', purpose: 'Synthetic T4 thyroid hormone replacement for restoring euthyroid metabolic state.', precautions: ['Separate by ≥4 hours from calcium, iron, or antacids', 'Regular TSH blood monitoring required for titration', 'Caution in coronary heart disease'], relatedDiseases: ['hypothyroidism'], category: 'Hormone Replacement' },
+      liothyronine: { id: 'liothyronine', name: 'Liothyronine', genericName: 'Liothyronine Sodium (T3)', form: 'Tablet (Oral)', commonStrengths: ['5 mcg', '25 mcg'], referenceFrequency: 'As prescribed in divided daily doses', purpose: 'Synthetic active T3 hormone utilized in select combination regimens.', precautions: ['Rapid onset with greater cardiac stimulatory profile', 'Close specialist endocrinologist supervision mandatory'], relatedDiseases: ['hypothyroidism'], category: 'Hormone Replacement' },
+      methimazole: { id: 'methimazole', name: 'Methimazole', genericName: 'Methimazole', form: 'Tablet (Oral)', commonStrengths: ['5 mg', '10 mg', '20 mg'], referenceFrequency: '1–3 divided doses daily', purpose: 'Thionamide antithyroid drug inhibiting thyroid peroxidase organification of iodine.', precautions: ['Immediately report fever or sore throat (agranulocytosis risk)', 'Monitor liver function tests', 'Avoid in 1st trimester of pregnancy'], relatedDiseases: ['hyperthyroidism'], category: 'Antithyroid' },
+      propylthiouracil: { id: 'propylthiouracil', name: 'Propylthiouracil (PTU)', genericName: 'Propylthiouracil', form: 'Tablet (Oral)', commonStrengths: ['50 mg', '100 mg'], referenceFrequency: 'Every 8 hours as prescribed', purpose: 'Antithyroid agent inhibiting hormone synthesis and peripheral T4-to-T3 conversion.', precautions: ['FDA Black Box Warning for severe hepatotoxicity', 'Preferred over methimazole in 1st trimester pregnancy and thyroid storm'], relatedDiseases: ['hyperthyroidism'], category: 'Antithyroid' },
+      'propranolol-thyroid': { id: 'propranolol-thyroid', name: 'Propranolol', genericName: 'Propranolol HCl', form: 'Tablet (Oral)', commonStrengths: ['10 mg', '20 mg', '40 mg'], referenceFrequency: '2–4 times daily as symptomatic adjunct', purpose: 'Non-selective beta-blocker rapidly controlling tremor, palpitations, and tachycardia.', precautions: ['Contraindicated in bronchial asthma and severe bradycardia', 'Do not discontinue abruptly'], relatedDiseases: ['hyperthyroidism', 'migraine'], category: 'Beta-Blocker' },
+      amlodipine: { id: 'amlodipine', name: 'Amlodipine', genericName: 'Amlodipine Besylate', form: 'Tablet (Oral)', commonStrengths: ['2.5 mg', '5 mg', '10 mg'], referenceFrequency: 'Once daily', purpose: 'Dihydropyridine calcium channel blocker promoting peripheral arterial vasodilation.', precautions: ['May cause dose-dependent peripheral ankle edema', 'Transient flushing or dizziness upon initiation'], relatedDiseases: ['hypertension'], category: 'Antihypertensive' },
+      losartan: { id: 'losartan', name: 'Losartan', genericName: 'Losartan Potassium', form: 'Tablet (Oral)', commonStrengths: ['25 mg', '50 mg', '100 mg'], referenceFrequency: 'Once daily', purpose: 'Angiotensin II Receptor Blocker (ARB) reducing vascular resistance and protecting renal microvasculature.', precautions: ['Strictly contraindicated in pregnancy (fetotoxic)', 'Monitor serum potassium (hyperkalemia risk) and serum creatinine'], relatedDiseases: ['hypertension'], category: 'Antihypertensive' },
+      atenolol: { id: 'atenolol', name: 'Atenolol', genericName: 'Atenolol', form: 'Tablet (Oral)', commonStrengths: ['25 mg', '50 mg', '100 mg'], referenceFrequency: 'Once daily', purpose: 'Cardioselective beta-1 blocker lowering heart rate and myocardial oxygen demand.', precautions: ['Do not stop abruptly (rebound tachycardia/hypertension risk)', 'Can mask early hypoglycemia signs (sweating is preserved)'], relatedDiseases: ['hypertension'], category: 'Antihypertensive' },
+      hydrochlorothiazide: { id: 'hydrochlorothiazide', name: 'Hydrochlorothiazide (HCTZ)', genericName: 'Hydrochlorothiazide', form: 'Tablet (Oral)', commonStrengths: ['12.5 mg', '25 mg', '50 mg'], referenceFrequency: 'Once daily in the morning', purpose: 'Thiazide diuretic reducing plasma volume and peripheral vascular resistance.', precautions: ['Take early in day to avoid nocturnal urination', 'Monitor serum electrolytes (hypokalemia, hyponatremia)', 'May increase uric acid levels'], relatedDiseases: ['hypertension'], category: 'Antihypertensive' },
+      fludrocortisone: { id: 'fludrocortisone', name: 'Fludrocortisone', genericName: 'Fludrocortisone Acetate', form: 'Tablet (Oral)', commonStrengths: ['0.1 mg'], referenceFrequency: 'Once daily in morning', purpose: 'Potent mineralocorticoid enhancing renal sodium reabsorption to expand intravascular volume.', precautions: ['Monitor for excessive hypertension and peripheral edema', 'Regular serum potassium monitoring'], relatedDiseases: ['hypotension'], category: 'Mineralocorticoid' },
+      midodrine: { id: 'midodrine', name: 'Midodrine', genericName: 'Midodrine HCl', form: 'Tablet (Oral)', commonStrengths: ['2.5 mg', '5 mg', '10 mg'], referenceFrequency: '3 times daily during daytime waking hours (every 4h)', purpose: 'Alpha-1 adrenergic agonist causing venous and arteriolar vasoconstriction for orthostatic hypotension.', precautions: ['Do not take within 4 hours of bedtime to prevent supine hypertension', 'Contraindicated in severe organic heart disease'], relatedDiseases: ['hypotension'], category: 'Vasopressor' },
+      atorvastatin: { id: 'atorvastatin', name: 'Atorvastatin', genericName: 'Atorvastatin Calcium', form: 'Tablet (Oral)', commonStrengths: ['10 mg', '20 mg', '40 mg', '80 mg'], referenceFrequency: 'Once daily at any consistent time with or without food', purpose: 'HMG-CoA reductase inhibitor significantly lowering LDL cholesterol and atherosclerotic cardiovascular risk.', precautions: ['Promptly report unexplained muscle pain or weakness (myopathy/rhabdomyolysis)', 'Periodic baseline liver transaminase check', 'Avoid in pregnancy'], relatedDiseases: ['high-cholesterol'], category: 'Lipid-Lowering' },
+      rosuvastatin: { id: 'rosuvastatin', name: 'Rosuvastatin', genericName: 'Rosuvastatin Calcium', form: 'Tablet (Oral)', commonStrengths: ['5 mg', '10 mg', '20 mg', '40 mg'], referenceFrequency: 'Once daily', purpose: 'High-potency hydrophilic statin delivering robust LDL-C reduction and plaque stabilization.', precautions: ['Myopathy monitoring', 'Start at lower 5 mg dose in Asian individuals', 'Avoid in severe renal impairment without dose reduction'], relatedDiseases: ['high-cholesterol'], category: 'Lipid-Lowering' },
+      ezetimibe: { id: 'ezetimibe', name: 'Ezetimibe', genericName: 'Ezetimibe', form: 'Tablet (Oral)', commonStrengths: ['10 mg'], referenceFrequency: 'Once daily', purpose: 'Selective inhibitor of Niemann-Pick C1-Like 1 (NPC1L1) intestinal cholesterol transporter.', precautions: ['Generally very well tolerated', 'Monitor liver enzymes when co-administered with statins'], relatedDiseases: ['high-cholesterol'], category: 'Lipid-Lowering' },
+      salbutamol: { id: 'salbutamol', name: 'Salbutamol (Albuterol)', genericName: 'Salbutamol Sulfate', form: 'Inhaler / Nebulizer', commonStrengths: ['100 mcg/puff', '2.5 mg/2.5 mL'], referenceFrequency: '1–2 puffs as needed for acute bronchospasm', purpose: 'Short-acting beta-2 agonist (SABA) providing rapid smooth muscle bronchodilation.', precautions: ['Rescue relief only — frequent use (>2 canisters/year) indicates poor baseline control', 'May produce fine hand tremors and palpitations'], relatedDiseases: ['asthma', 'bronchitis'], category: 'Bronchodilator' },
+      'budesonide-inhaler': { id: 'budesonide-inhaler', name: 'Budesonide Inhaler', genericName: 'Budesonide', form: 'Metered Dose / Dry Powder Inhaler', commonStrengths: ['100 mcg', '200 mcg', '400 mcg/puff'], referenceFrequency: '1–2 puffs twice daily consistently', purpose: 'Inhaled corticosteroid (ICS) addressing underlying chronic bronchial eosinophilic inflammation.', precautions: ['Always rinse mouth and spit water after each inhalation to prevent oral candidiasis (thrush)', 'Not a rescue inhaler for acute breathlessness'], relatedDiseases: ['asthma'], category: 'Inhaled Steroid' },
+      montelukast: { id: 'montelukast', name: 'Montelukast', genericName: 'Montelukast Sodium', form: 'Tablet / Chewable', commonStrengths: ['4 mg', '5 mg', '10 mg'], referenceFrequency: 'Once daily in the evening', purpose: 'CysLT1 leukotriene receptor antagonist reducing exercise and allergen-triggered airway constriction.', precautions: ['FDA Black Box warning: Monitor for neuropsychiatric symptoms (agitation, vivid dreams, depressive mood changes)'], relatedDiseases: ['asthma', 'allergic-rhinitis'], category: 'Leukotriene Blocker' },
+      salmeterol: { id: 'salmeterol', name: 'Salmeterol', genericName: 'Salmeterol Xinafoate', form: 'Dry Powder Inhaler', commonStrengths: ['50 mcg/blister'], referenceFrequency: 'Twice daily (every 12 hours)', purpose: 'Long-acting beta-2 agonist (LABA) providing sustained 12-hour bronchodilation.', precautions: ['NEVER use as monotherapy in asthma — must always be co-formulated with an Inhaled Corticosteroid (ICS)'], relatedDiseases: ['asthma'], category: 'Bronchodilator' },
+      oseltamivir: { id: 'oseltamivir', name: 'Oseltamivir (Tamiflu)', genericName: 'Oseltamivir Phosphate', form: 'Capsule / Suspension', commonStrengths: ['30 mg', '45 mg', '75 mg'], referenceFrequency: 'Twice daily for 5 consecutive days', purpose: 'Neuraminidase inhibitor halting viral progeny release from infected respiratory epithelial cells.', precautions: ['Most clinically effective when initiated within 48 hours of flu symptom onset', 'Adjust dose in renal impairment', 'Not a substitute for yearly vaccination'], relatedDiseases: ['influenza'], category: 'Antiviral' },
+      cetirizine: { id: 'cetirizine', name: 'Cetirizine', genericName: 'Cetirizine HCl', form: 'Tablet / Syrup', commonStrengths: ['5 mg', '10 mg'], referenceFrequency: 'Once daily', purpose: 'Second-generation selective peripheral H1-antihistamine relieving rhinorrhea, sneezing, and pruritus.', precautions: ['Mild sedation possible in sensitive individuals', 'Avoid combining with alcohol', 'Reduce dose in renal impairment'], relatedDiseases: ['allergic-rhinitis', 'common-cold', 'eczema', 'dermatitis-contact', 'chicken-pox', 'conjunctivitis'], category: 'Antihistamine' },
+      loratadine: { id: 'loratadine', name: 'Loratadine', genericName: 'Loratadine', form: 'Tablet / Syrup', commonStrengths: ['10 mg'], referenceFrequency: 'Once daily', purpose: 'Non-sedating long-acting tricyclic peripheral histamine H1 antagonist.', precautions: ['Take with or without food', 'Dose adjustment in severe hepatic impairment'], relatedDiseases: ['allergic-rhinitis'], category: 'Antihistamine' },
+      'fluticasone-nasal': { id: 'fluticasone-nasal', name: 'Fluticasone Nasal Spray', genericName: 'Fluticasone Propionate', form: 'Aqueous Nasal Spray', commonStrengths: ['50 mcg/spray'], referenceFrequency: '1–2 sprays per nostril once daily', purpose: 'Topical intranasal corticosteroid offering potent suppression of allergic nasal inflammation.', precautions: ['Aim spray toward outer ear, away from nasal septum to prevent mucosal erosion and epistaxis', 'Requires 3–7 days of continuous use for peak efficacy'], relatedDiseases: ['allergic-rhinitis', 'sinusitis'], category: 'Nasal Steroid' },
+      pseudoephedrine: { id: 'pseudoephedrine', name: 'Pseudoephedrine', genericName: 'Pseudoephedrine HCl', form: 'Tablet (Oral)', commonStrengths: ['30 mg', '60 mg', '120 mg ER'], referenceFrequency: 'Every 4–6 hours as needed (max 240 mg/day)', purpose: 'Sympathomimetic vasoconstrictor reducing nasal and sinus mucosal congestion.', precautions: ['Contraindicated in uncontrolled hypertension and severe coronary artery disease', 'May cause insomnia (avoid late night dosing)', 'Do not use > 7 days'], relatedDiseases: ['common-cold', 'sinusitis'], category: 'Decongestant' },
+      'amoxicillin-clav': { id: 'amoxicillin-clav', name: 'Amoxicillin-Clavulanate', genericName: 'Amoxicillin + Clavulanic Acid', form: 'Tablet / Suspension', commonStrengths: ['625 mg', '1000 mg'], referenceFrequency: 'Twice daily with meals for designated course', purpose: 'Broad-spectrum beta-lactam antibacterial combined with beta-lactamase inhibitor.', precautions: ['Confirm absence of penicillin allergy prior to use', 'Take at start of meals to minimize gastrointestinal diarrhea', 'Complete entire prescribed course'], relatedDiseases: ['sinusitis'], category: 'Antibiotic' },
+      amoxicillin: { id: 'amoxicillin', name: 'Amoxicillin', genericName: 'Amoxicillin Trihydrate', form: 'Capsule / Tablet', commonStrengths: ['250 mg', '500 mg', '875 mg'], referenceFrequency: 'Every 8–12 hours', purpose: 'Moderate-spectrum aminopenicillin for susceptible bacterial infections.', precautions: ['Penicillin allergy contraindication', 'Complete full course to prevent bacterial resistance'], relatedDiseases: ['bronchitis', 'gastritis'], category: 'Antibiotic' },
+      omeprazole: { id: 'omeprazole', name: 'Omeprazole', genericName: 'Omeprazole', form: 'Delayed-Release Capsule', commonStrengths: ['20 mg', '40 mg'], referenceFrequency: 'Once daily 30–60 minutes before breakfast', purpose: 'Proton pump inhibitor (PPI) providing profound and prolonged suppression of gastric H+/K+ ATPase acid secretion.', precautions: ['Swallow whole; do not crush or chew beads', 'Long-term continuous therapy: monitor magnesium, Vitamin B12, and bone mineral density', 'Interacts with clopidogrel'], relatedDiseases: ['gerd', 'gastritis', 'acidity'], category: 'Proton Pump Inhibitor' },
+      pantoprazole: { id: 'pantoprazole', name: 'Pantoprazole', genericName: 'Pantoprazole Sodium', form: 'Enteric-Coated Tablet', commonStrengths: ['20 mg', '40 mg'], referenceFrequency: 'Once daily 30–60 min before breakfast', purpose: 'Proton pump inhibitor suppressing gastric acid secretion with minimal CYP2C19 interactions.', precautions: ['Take prior to first meal', 'Do not crush or split enteric-coated tablets'], relatedDiseases: ['gerd'], category: 'Proton Pump Inhibitor' },
+      ranitidine: { id: 'ranitidine', name: 'Famotidine / H2-Blocker', genericName: 'Famotidine', form: 'Tablet (Oral)', commonStrengths: ['20 mg', '40 mg'], referenceFrequency: 'Once or twice daily (bedtime or before meals)', purpose: 'Competitive histamine H2-receptor antagonist reducing basal and nocturnal acid production.', precautions: ['Dose adjustment in moderate-to-severe renal impairment', 'Generally rapid onset of symptomatic heartburn relief'], relatedDiseases: ['gerd', 'acidity'], category: 'H2 Receptor Blocker' },
+      antacid: { id: 'antacid', name: 'Antacid Suspension', genericName: 'Aluminum Hydroxide + Magnesium Hydroxide + Simethicone', form: 'Oral Liquid / Chewable', commonStrengths: ['Standard liquid formulation'], referenceFrequency: '10–20 mL 1–2 hours after meals and at bedtime as needed', purpose: 'Direct chemical neutralization of existing gastric hydrochloric acid for immediate symptom relief.', precautions: ['Separate from other oral medications by ≥ 2 hours (chelates and reduces drug absorption)', 'Excessive magnesium causes loose stool; excessive aluminum causes constipation'], relatedDiseases: ['gerd', 'gastritis', 'acidity'], category: 'Antacid' },
+      sucralfate: { id: 'sucralfate', name: 'Sucralfate', genericName: 'Sucralfate', form: 'Tablet / Suspension', commonStrengths: ['1 g'], referenceFrequency: '1 g four times daily on an empty stomach (1h before meals & bedtime)', purpose: 'Complex polyaluminum sucrose sulfate that forms an adherent protective cytoprotective paste over mucosal ulcers.', precautions: ['Must be taken on an empty stomach', 'May cause mild constipation', 'Separate from other medications by 2 hours'], relatedDiseases: ['gastritis'], category: 'Mucosal Protectant' },
+      'oral-rehydration': { id: 'oral-rehydration', name: 'Oral Rehydration Salts (ORS)', genericName: 'WHO Standard Glucose-Electrolyte Formulation', form: 'Powder for Oral Solution', commonStrengths: ['WHO low-osmolarity sachet (20.5 g/L)'], referenceFrequency: 'Sip continuously after every loose stool (200–400 mL/stool)', purpose: 'Utilizes sodium-glucose co-transport in intact intestinal enterocytes to restore lost body water and electrolytes.', precautions: ['Dissolve precisely in correct volume of clean drinking water — DO NOT boil prepared solution or mix into milk/juice', 'Seek urgent medical care if unable to drink or showing signs of severe dehydration'], relatedDiseases: ['diarrhea', 'dengue-fever'], category: 'Electrolyte Solution' },
+      loperamide: { id: 'loperamide', name: 'Loperamide', genericName: 'Loperamide HCl', form: 'Capsule / Tablet', commonStrengths: ['2 mg'], referenceFrequency: '4 mg initial dose, then 2 mg after each unformed stool (max 8–16 mg/day)', purpose: 'Mu-opioid receptor agonist in intestinal circular muscle slowing colonic transit time and increasing fluid absorption.', precautions: ['NEVER use in acute inflammatory bloody diarrhea (dysentery) or bacterial enteritis with high fever', 'Do not exceed maximum daily dosage'], relatedDiseases: ['diarrhea'], category: 'Antidiarrheal' },
+      metronidazole: { id: 'metronidazole', name: 'Metronidazole', genericName: 'Metronidazole', form: 'Tablet (Oral)', commonStrengths: ['200 mg', '400 mg', '500 mg'], referenceFrequency: 'Every 8 hours with meals for designated course', purpose: 'Nitroimidazole antimicrobial and antiprotozoal active against anaerobic bacteria, Giardia, and Entamoeba.', precautions: ['STRICTLY AVOID ALL ALCOHOL during and for 48 hours after treatment (severe disulfiram-like reaction)', 'Transient metallic taste and dark urine are common'], relatedDiseases: ['diarrhea', 'gastritis'], category: 'Antiprotozoal' },
+      'zinc-diarrhea': { id: 'zinc-diarrhea', name: 'Zinc Sulfate Supplement', genericName: 'Zinc Sulfate DT', form: 'Dispersible Tablet / Syrup', commonStrengths: ['10 mg', '20 mg'], referenceFrequency: '20 mg once daily for 10–14 days in acute diarrhea', purpose: 'WHO-recommended micronutrient restoring mucosal integrity, enzyme function, and decreasing diarrhea duration.', precautions: ['Give for full 10–14 day course even if diarrhea resolves earlier', 'Take with food to prevent transient mild nausea'], relatedDiseases: ['diarrhea'], category: 'Nutritional Mineral' },
+      lactulose: { id: 'lactulose', name: 'Lactulose', genericName: 'Lactulose Solution', form: 'Oral Liquid', commonStrengths: ['3.35 g / 5 mL (10 g / 15 mL)'], referenceFrequency: '15–30 mL once or twice daily', purpose: 'Synthetic non-absorbable disaccharide osmotic laxative drawing water into the colonic lumen.', precautions: ['May produce initial flatulence and abdominal cramps', 'Takes 24–48 hours to produce laxative effect', 'Stay well hydrated'], relatedDiseases: ['constipation'], category: 'Osmotic Laxative' },
+      bisacodyl: { id: 'bisacodyl', name: 'Bisacodyl', genericName: 'Bisacodyl', form: 'Enteric Tablet / Suppository', commonStrengths: ['5 mg tablet', '10 mg suppository'], referenceFrequency: '5–10 mg once at bedtime as needed', purpose: 'Diphenylmethane stimulant laxative directly stimulating colonic myenteric plexus contractions.', precautions: ['Do not crush or take with milk/antacids within 1 hour (dissolves protective enteric coating causing gastric irritation)', 'Not intended for chronic continuous daily usage'], relatedDiseases: ['constipation'], category: 'Stimulant Laxative' },
+      'psyllium-husk': { id: 'psyllium-husk', name: 'Psyllium Husk (Isabgol)', genericName: 'Plantago Ovata Seed Husk', form: 'Natural Hydrophilic Mucilloid Powder', commonStrengths: ['3.5 g / sachet'], referenceFrequency: '1–2 level tablespoons mixed in large glass of water 1–2 times daily', purpose: 'Bulk-forming natural soluble fiber absorbing water to form a soft, lubricated stool mass.', precautions: ['MUST BE CONSUMED WITH AT LEAST 250 ML OF WATER IMMEDIATELY — Choking hazard if taken dry', 'Separate from oral prescription drugs by 2 hours'], relatedDiseases: ['constipation'], category: 'Bulk Laxative' },
+      senna: { id: 'senna', name: 'Senna Extract', genericName: 'Sennosides A & B', form: 'Tablet / Syrup', commonStrengths: ['7.5 mg', '15 mg'], referenceFrequency: '1–2 tablets at bedtime as needed', purpose: 'Anthraquinone botanical stimulant laxative promoting colonic motility within 6–12 hours.', precautions: ['Short-term relief of acute constipation only', 'May harmlessly tint urine reddish-brown'], relatedDiseases: ['constipation'], category: 'Stimulant Laxative' },
+      'benzoyl-peroxide': { id: 'benzoyl-peroxide', name: 'Benzoyl Peroxide Gel', genericName: 'Benzoyl Peroxide', form: 'Topical Gel / Wash', commonStrengths: ['2.5%', '5%', '10%'], referenceFrequency: 'Apply thin layer to affected area 1–2 times daily', purpose: 'Bactericidal oxidizing agent releasing free radicals to eradicate C. acnes with mild keratolytic action.', precautions: ['Bleaches colored fabrics, towels, and hair upon contact', 'Causes initial mild erythema and peeling — start with 2.5% concentration', 'Use daily sunscreen'], relatedDiseases: ['acne'], category: 'Topical Anti-Acne' },
+      tretinoin: { id: 'tretinoin', name: 'Tretinoin Cream (Retin-A)', genericName: 'All-Trans Retinoic Acid', form: 'Topical Cream / Gel', commonStrengths: ['0.025%', '0.05%', '0.1%'], referenceFrequency: 'Apply pea-sized amount to clean dry face at night', purpose: 'First-generation topical retinoid normalizing follicular keratinocyte desquamation and preventing microcomedones.', precautions: ['STRICTLY CONTRAINDICATED IN PREGNANCY', 'Causes photosensitivity — broad-spectrum SPF daily is mandatory', 'Expect initial "retinoid purge" and irritation during weeks 2–4'], relatedDiseases: ['acne'], category: 'Topical Retinoid' },
+      'clindamycin-topical': { id: 'clindamycin-topical', name: 'Clindamycin Topical', genericName: 'Clindamycin Phosphate', form: 'Topical Solution / Gel', commonStrengths: ['1%'], referenceFrequency: 'Apply thin film twice daily', purpose: 'Lincosamide topical antibiotic suppressing Cutibacterium acnes bacterial proliferation.', precautions: ['Best combined with benzoyl peroxide to prevent emergence of resistant bacterial strains'], relatedDiseases: ['acne'], category: 'Topical Antibiotic' },
+      doxycycline: { id: 'doxycycline', name: 'Doxycycline', genericName: 'Doxycycline Hyclate / Monohydrate', form: 'Capsule / Tablet', commonStrengths: ['50 mg', '100 mg'], referenceFrequency: 'Once or twice daily with a full glass of water and food', purpose: 'Oral tetracycline antibiotic with anti-inflammatory properties for moderate-to-severe inflammatory acne.', precautions: ['Do not lie down for 30 min after swallowing (pill-induced esophagitis risk)', 'Marked photosensitivity', 'Contraindicated in pregnancy and children < 8 years', 'Avoid taking concurrently with dairy, iron, or antacids'], relatedDiseases: ['acne'], category: 'Antibiotic' },
+      'hydrocortisone-cream': { id: 'hydrocortisone-cream', name: 'Hydrocortisone 1% Cream', genericName: 'Hydrocortisone', form: 'Topical Cream / Ointment', commonStrengths: ['0.5%', '1%', '2.5%'], referenceFrequency: 'Apply sparingly to inflamed skin 1–2 times daily for up to 7–10 days', purpose: 'Low-potency Class VII topical corticosteroid suppressing local inflammatory cytokine production.', precautions: ['Avoid prolonged use on thin facial or intertriginous skin (groin/axilla)', 'Do not apply over untreated bacterial or fungal infections', 'Discontinue once acute flare subsides'], relatedDiseases: ['eczema', 'dermatitis-contact'], category: 'Topical Steroid' },
+      'tacrolimus-topical': { id: 'tacrolimus-topical', name: 'Tacrolimus Ointment (Protopic)', genericName: 'Tacrolimus', form: 'Topical Ointment', commonStrengths: ['0.03%', '0.1%'], referenceFrequency: 'Apply thin layer to affected skin twice daily', purpose: 'Topical calcineurin inhibitor suppressing T-lymphocyte activation without causing corticosteroid skin atrophy.', precautions: ['Transient localized burning and stinging upon initial application (diminishes after few days)', 'Avoid extensive UV/tanning bed exposure', 'Safe for eyelid and facial eczema'], relatedDiseases: ['eczema'], category: 'Calcineurin Inhibitor' },
+      dupilumab: { id: 'dupilumab', name: 'Dupilumab (Dupixent)', genericName: 'Dupilumab', form: 'Subcutaneous Injection', commonStrengths: ['200 mg', '300 mg prefilled pen'], referenceFrequency: 'Every 2 weeks following initial loading dose', purpose: 'Fully human monoclonal antibody blocking IL-4 and IL-13 signaling pathways driving Type 2 inflammation.', precautions: ['Specialist dermatologist prescription and monitoring', 'Monitor for allergic conjunctivitis', 'Injection site reactions'], relatedDiseases: ['eczema'], category: 'Biologic' },
+      'methotrexate-pso': { id: 'methotrexate-pso', name: 'Methotrexate', genericName: 'Methotrexate', form: 'Tablet / Subcutaneous Injection', commonStrengths: ['2.5 mg', '7.5 mg', '15 mg', '25 mg'], referenceFrequency: 'ONCE WEEKLY ON A SPECIFIED DAY (NEVER DAILY)', purpose: 'Antimetabolite and immunosuppressant suppressing hyperproliferative epidermal keratinocytes and synovitis.', precautions: ['FATAL TOXICITY IF TAKEN DAILY IN ERROR — STRICTLY ONCE PER WEEK', 'Strictly contraindicated in pregnancy (teratogenic/abortifacient)', 'Routine monitoring of CBC, liver function, and renal function mandatory', 'Co-prescribe Folic Acid on non-methotrexate days'], relatedDiseases: ['psoriasis'], category: 'Immunosuppressant' },
+      calcipotriol: { id: 'calcipotriol', name: 'Calcipotriol (Calcipotriene)', genericName: 'Calcipotriol', form: 'Topical Ointment / Scalp Solution', commonStrengths: ['50 mcg/g (0.005%)'], referenceFrequency: 'Apply to plaques 1–2 times daily', purpose: 'Synthetic Vitamin D3 analogue inducing normal keratinocyte differentiation and inhibiting proliferation.', precautions: ['Maximum weekly dose 100 g to avoid systemic hypercalcemia', 'Avoid applying to facial skin'], relatedDiseases: ['psoriasis'], category: 'Vitamin D Analogue' },
+      'betamethasone-topical': { id: 'betamethasone-topical', name: 'Betamethasone Dipropionate', genericName: 'Betamethasone Dipropionate', form: 'Topical Ointment / Cream', commonStrengths: ['0.05%'], referenceFrequency: 'Apply thin layer once or twice daily for max 2–4 weeks', purpose: 'Potent Class II topical corticosteroid for clearing resistant thick psoriatic plaques.', precautions: ['Do not use under airtight occlusive dressings without supervision', 'Risk of skin thinning, striae, and systemic absorption if overused'], relatedDiseases: ['psoriasis'], category: 'Topical Steroid' },
+      adalimumab: { id: 'adalimumab', name: 'Adalimumab (Humira)', genericName: 'Adalimumab', form: 'Subcutaneous Auto-Injector', commonStrengths: ['40 mg / 0.8 mL'], referenceFrequency: 'Every 2 weeks under medical guidance', purpose: 'Recombinant human IgG1 monoclonal antibody binding and neutralizing Tumor Necrosis Factor (TNF-alpha).', precautions: ['Screen for latent tuberculosis and hepatitis B prior to therapy initiation', 'Increased risk of serious infections — hold during active fevers', 'Specialist supervision'], relatedDiseases: ['psoriasis'], category: 'Anti-TNF Biologic' },
+      'calamine-lotion': { id: 'calamine-lotion', name: 'Calamine Lotion', genericName: 'Zinc Oxide + Ferric Oxide + Calamine', form: 'Topical Suspension', commonStrengths: ['Standard OTC formulation'], referenceFrequency: 'Shake bottle well; dab onto itchy lesions 3–4 times daily as needed', purpose: 'Topical protectant and mild astringent with evaporative cooling and soothing anti-pruritic action.', precautions: ['For external cutaneous application only — avoid eyes and open bleeding wounds', 'Safe for pediatric chickenpox itch relief'], relatedDiseases: ['chicken-pox', 'dermatitis-contact'], category: 'Topical Soothing' },
+      'clotrimazole-topical': { id: 'clotrimazole-topical', name: 'Clotrimazole 1% Cream', genericName: 'Clotrimazole', form: 'Topical Cream / Powder', commonStrengths: ['1%'], referenceFrequency: 'Apply to clean dry affected area 2–3 times daily for 2–4 weeks', purpose: 'Broad-spectrum imidazole antifungal inhibiting fungal ergosterol biosynthesis.', precautions: ['Continue applying for at least 14 days after all visible signs of rash clear to prevent recurrence', 'Keep area aerated and dry'], relatedDiseases: ['fungal-skin'], category: 'Antifungal' },
+      'terbinafine-topical': { id: 'terbinafine-topical', name: 'Terbinafine Cream (Lamisil)', genericName: 'Terbinafine HCl', form: 'Topical Cream / Spray', commonStrengths: ['1%'], referenceFrequency: 'Apply once or twice daily for 1–2 weeks', purpose: 'Allylamine antifungal inhibiting squalene epoxidase with fungicidal activity against dermatophytes.', precautions: ['Wash hands before and after application', 'Avoid contact with eyes and mucous membranes'], relatedDiseases: ['fungal-skin'], category: 'Antifungal' },
+      fluconazole: { id: 'fluconazole', name: 'Fluconazole', genericName: 'Fluconazole', form: 'Oral Capsule / Tablet', commonStrengths: ['50 mg', '150 mg', '200 mg'], referenceFrequency: 'As prescribed (single dose or once weekly pulse)', purpose: 'Systemic triazole antifungal for extensive, recurrent, or nail/scalp fungal infections.', precautions: ['Multiple significant drug-drug interactions (inhibits CYP2C9, CYP3A4)', 'Avoid in 1st trimester pregnancy'], relatedDiseases: ['fungal-skin'], category: 'Antifungal' },
+      'ketoconazole-shampoo': { id: 'ketoconazole-shampoo', name: 'Ketoconazole 2% Shampoo', genericName: 'Ketoconazole', form: 'Medicated Shampoo', commonStrengths: ['2%'], referenceFrequency: 'Massage into wet scalp, leave for 3–5 minutes, then rinse; twice weekly for 2–4 weeks', purpose: 'Antifungal shampoo targeting Malassezia and dermatophyte proliferation on the scalp.', precautions: ['Leave on scalp for full 3–5 minutes before rinsing for adequate therapeutic contact'], relatedDiseases: ['fungal-skin'], category: 'Antifungal' },
+      sumatriptan: { id: 'sumatriptan', name: 'Sumatriptan', genericName: 'Sumatriptan Succinate', form: 'Tablet / Nasal Spray / SC Injection', commonStrengths: ['50 mg', '100 mg tablet', '20 mg nasal spray'], referenceFrequency: 'Take 1 tablet at earliest onset of migraine headache; may repeat after 2 hours if needed (max 200 mg/24h)', purpose: 'Selective 5-HT1B/1D serotonin receptor agonist causing cranial vessel constriction and inhibition of neuropeptide release.', precautions: ['Strictly contraindicated in ischemic heart disease, coronary vasospasm (Prinzmetal), prior stroke/TIA, or uncontrolled hypertension', 'Do not use within 24 hours of another triptan or ergotamine alkaloid'], relatedDiseases: ['migraine'], category: 'Antimigraine Triptan' },
+      topiramate: { id: 'topiramate', name: 'Topiramate', genericName: 'Topiramate', form: 'Tablet (Oral)', commonStrengths: ['25 mg', '50 mg', '100 mg'], referenceFrequency: 'Start low (25 mg at night) and titrate slowly upwards as directed', purpose: 'Voltage-gated sodium channel and GABA-modulating agent used for migraine prophylaxis.', precautions: ['Risk of cognitive slowing, word-finding difficulty, and paresthesias ("pins and needles")', 'Drink plenty of water to prevent nephrolithiasis (kidney stones)', 'Teratogenic (cleft lip/palate risk) — ensure effective contraception'], relatedDiseases: ['migraine'], category: 'Migraine Prophylaxis' },
+      ibuprofen: { id: 'ibuprofen', name: 'Ibuprofen', genericName: 'Ibuprofen', form: 'Tablet / Suspension', commonStrengths: ['200 mg', '400 mg', '600 mg'], referenceFrequency: '200–400 mg every 6–8 hours with food as needed (max 1200 mg OTC / 2400 mg Rx)', purpose: 'Non-selective NSAID inhibiting COX-1 and COX-2 enzymes to provide anti-inflammatory, analgesic, and antipyretic relief.', precautions: ['ALWAYS take with food or milk to minimize gastric ulceration', 'NEVER use in suspected Dengue Fever (increases severe hemorrhage risk)', 'Avoid in active peptic ulcer, severe heart failure, or 3rd trimester pregnancy'], relatedDiseases: ['migraine', 'tension-headache', 'arthritis', 'muscle-strain', 'influenza'], category: 'NSAID' },
+      paracetamol: { id: 'paracetamol', name: 'Paracetamol (Acetaminophen)', genericName: 'Paracetamol', form: 'Tablet / Syrup / IV', commonStrengths: ['500 mg', '650 mg', '1000 mg'], referenceFrequency: '500–1000 mg every 4–6 hours as needed (MAXIMUM 4000 mg in 24 hours)', purpose: 'Central-acting analgesic and antipyretic with favorable safety profile — the DOC for fever in Dengue.', precautions: ['STRICTLY DO NOT EXCEED 4000 MG IN 24 HOURS (2000–3000 mg in chronic liver disease or elderly) — Risk of fatal hepatotoxicity', 'Check all combination cough/cold syrups to prevent accidental double dosing'], relatedDiseases: ['migraine', 'tension-headache', 'common-cold', 'influenza', 'dengue-fever', 'chicken-pox'], category: 'Analgesic / Antipyretic' },
+      aspirin: { id: 'aspirin', name: 'Aspirin', genericName: 'Acetylsalicylic Acid', form: 'Tablet (Oral)', commonStrengths: ['75 mg (cardioprotective)', '325 mg', '500 mg'], referenceFrequency: '300–600 mg every 4–6 hours as needed with meals', purpose: 'Irreversible COX inhibitor with analgesic, anti-inflammatory, and antiplatelet properties.', precautions: ['ABSOLUTELY CONTRAINDICATED IN CHILDREN & ADOLESCENTS (< 19 yrs) with viral infections due to Reye\'s Syndrome', 'Never take during suspected Dengue fever', 'GI bleeding risk'], relatedDiseases: ['tension-headache'], category: 'NSAID / Antiplatelet' },
+      amitriptyline: { id: 'amitriptyline', name: 'Amitriptyline (Low-Dose)', genericName: 'Amitriptyline HCl', form: 'Tablet (Oral)', commonStrengths: ['10 mg', '25 mg'], referenceFrequency: '10–25 mg once at bedtime', purpose: 'Tricyclic compound used at low doses for preventive neuromodulation of chronic tension headache.', precautions: ['Produces significant evening sedation (take 1–2 hours before bedtime)', 'Anticholinergic side effects: dry mouth, constipation, urinary retention', 'Avoid in cardiac conduction abnormalities'], relatedDiseases: ['tension-headache'], category: 'Neuromodulator' },
+      'diclofenac-gel': { id: 'diclofenac-gel', name: 'Diclofenac 1% Gel (Voltaren)', genericName: 'Diclofenac Sodium', form: 'Topical Gel', commonStrengths: ['1% (10 mg/g)'], referenceFrequency: 'Apply 2–4 grams to affected joint 3–4 times daily', purpose: 'Topical NSAID concentrating anti-inflammatory action in peripheral joints with low systemic absorption.', precautions: ['Wash hands thoroughly after application', 'Do not apply to open cuts, abrasions, or mucous membranes'], relatedDiseases: ['arthritis', 'muscle-strain'], category: 'Topical NSAID' },
+      celecoxib: { id: 'celecoxib', name: 'Celecoxib (Celebrex)', genericName: 'Celecoxib', form: 'Capsule (Oral)', commonStrengths: ['100 mg', '200 mg'], referenceFrequency: '100–200 mg once or twice daily with food', purpose: 'Selective Cyclooxygenase-2 (COX-2) inhibitor delivering arthritis pain relief with reduced gastric ulcer risk.', precautions: ['Contraindicated in patients with known sulfonamide allergy', 'Cardiovascular thrombotic risk warning — use lowest effective dose for shortest duration'], relatedDiseases: ['arthritis'], category: 'COX-2 Selective NSAID' },
+      glucosamine: { id: 'glucosamine', name: 'Glucosamine Sulfate', genericName: 'Glucosamine Sulfate', form: 'Tablet / Capsule', commonStrengths: ['500 mg', '1500 mg'], referenceFrequency: '1500 mg once daily or 500 mg three times daily', purpose: 'Amino sugar building block for cartilage glycosaminoglycans and synovial fluid lubrication.', precautions: ['Caution if severe shellfish allergy (some products derived from chitin)', 'Trial for 2–3 months; discontinue if no subjective benefit'], relatedDiseases: ['arthritis'], category: 'Nutraceutical' },
+      cyclobenzaprine: { id: 'cyclobenzaprine', name: 'Cyclobenzaprine', genericName: 'Cyclobenzaprine HCl', form: 'Tablet (Oral)', commonStrengths: ['5 mg', '10 mg'], referenceFrequency: '5–10 mg three times daily as needed for up to 2–3 weeks', purpose: 'Centrally-acting skeletal muscle relaxant relieving acute painful muscle spasms.', precautions: ['Marked drowsiness and dizziness — do not drive or operate machinery', 'Do not combine with other CNS depressants or alcohol', 'Limit to short-term acute use (max 2–3 weeks)'], relatedDiseases: ['muscle-strain'], category: 'Muscle Relaxant' },
+      'ferrous-sulfate': { id: 'ferrous-sulfate', name: 'Ferrous Sulfate', genericName: 'Dried Ferrous Sulfate', form: 'Tablet / Syrup', commonStrengths: ['200 mg (65 mg elemental iron)', '325 mg'], referenceFrequency: 'Once or twice daily on an empty stomach with a source of Vitamin C', purpose: 'Essential oral iron salt replenishing depleted hemoglobin and bone marrow ferritin stores.', precautions: ['Stools will turn harmless dark black/greenish', 'Common GI side effects: constipation, nausea, mild cramping', 'Take with orange juice; avoid taking with calcium, milk, tea, or antacids', 'KEEP OUT OF REACH OF CHILDREN (iron toxicity is lethal)'], relatedDiseases: ['iron-deficiency-anaemia'], category: 'Iron Supplement' },
+      'ferrous-gluconate': { id: 'ferrous-gluconate', name: 'Ferrous Gluconate', genericName: 'Ferrous Gluconate', form: 'Tablet (Oral)', commonStrengths: ['300 mg (35 mg elemental iron)'], referenceFrequency: '1–2 tablets daily with food if sulfate is poorly tolerated', purpose: 'Gentler oral iron preparation with reduced elemental iron content and improved GI tolerance.', precautions: ['Lower elemental iron per pill requires longer replenishment timeline'], relatedDiseases: ['iron-deficiency-anaemia'], category: 'Iron Supplement' },
+      'iv-iron': { id: 'iv-iron', name: 'Ferric Carboxymaltose (IV Iron)', genericName: 'Ferric Carboxymaltose', form: 'Intravenous Infusion', commonStrengths: ['500 mg / 10 mL', '1000 mg / 20 mL'], referenceFrequency: 'Single or split dose administered in clinical facility under medical supervision', purpose: 'Rapid parenteral replenishment of total body iron deficits bypassing intestinal absorption.', precautions: ['Hospital or clinic setting with emergency resuscitation equipment available (anaphylactoid reaction risk)', 'Monitor vital signs during and 30 minutes post-infusion'], relatedDiseases: ['iron-deficiency-anaemia'], category: 'Parenteral Iron' },
+      'vitamin-d3': { id: 'vitamin-d3', name: 'Cholecalciferol (Vitamin D3)', genericName: 'Cholecalciferol', form: 'Oral Capsule / Drops / Sachet', commonStrengths: ['1000 IU', '2000 IU', '60,000 IU weekly'], referenceFrequency: '60,000 IU once weekly for 8 weeks (therapeutic), followed by 1000–2000 IU daily (maintenance)', purpose: 'Steroid hormone precursor promoting active intestinal calcium absorption and bone mineral density.', precautions: ['Fat-soluble vitamin — take with meals containing dietary fats for optimal absorption', 'Avoid mega-doses without monitoring serum 25(OH)D to prevent hypercalcemia'], relatedDiseases: ['vitamin-d-deficiency'], category: 'Vitamin D' },
+      calcitriol: { id: 'calcitriol', name: 'Calcitriol (Active D3)', genericName: '1,25-Dihydroxycholecalciferol', form: 'Capsule (Oral)', commonStrengths: ['0.25 mcg', '0.5 mcg'], referenceFrequency: '0.25–0.5 mcg daily as prescribed', purpose: 'Fully activated Vitamin D metabolite directly utilized in renal osteodystrophy and hypocalcemia.', precautions: ['High risk of hypercalcemia — regular serum calcium monitoring required'], relatedDiseases: ['vitamin-d-deficiency'], category: 'Active Vitamin D' },
+      cyanocobalamin: { id: 'cyanocobalamin', name: 'Cyanocobalamin (Vitamin B12)', genericName: 'Cyanocobalamin', form: 'Tablet / IM Injection', commonStrengths: ['500 mcg', '1000 mcg tablet', '1000 mcg/mL vial'], referenceFrequency: '1000 mcg daily oral OR 1000 mcg IM weekly for 4 weeks then monthly', purpose: 'Essential cofactor for DNA synthesis, erythropoiesis, and myelin sheath maintenance.', precautions: ['Parenteral IM route is mandatory if intrinsic factor deficiency (pernicious anemia) is present', 'Virtually non-toxic with high safety index'], relatedDiseases: ['vitamin-b12-deficiency'], category: 'Vitamin B12' },
+      methylcobalamin: { id: 'methylcobalamin', name: 'Methylcobalamin (Active B12)', genericName: 'Methylcobalamin', form: 'Sublingual Tablet / Injection', commonStrengths: ['500 mcg', '1500 mcg'], referenceFrequency: '1500 mcg once daily', purpose: 'Active coenzyme form of B12 supporting homocysteine remethylation and peripheral nerve repair.', precautions: ['Dissolve sublingual tablet under tongue for direct mucosal absorption'], relatedDiseases: ['vitamin-b12-deficiency'], category: 'Vitamin B12' },
+      'chloramphenicol-eye': { id: 'chloramphenicol-eye', name: 'Chloramphenicol Eye Drops', genericName: 'Chloramphenicol', form: 'Ophthalmic Solution / Ointment', commonStrengths: ['0.5% drops', '1% ointment'], referenceFrequency: '1–2 drops every 2–4 hours (drops) / bedtime (ointment) for 5–7 days', purpose: 'Broad-spectrum bacteriostatic antibiotic targeting acute bacterial conjunctivitis pathogens.', precautions: ['Do not touch dropper tip to eye or skin', 'Discard open bottle 28 days after first opening', 'Remove contact lenses during entire treatment duration'], relatedDiseases: ['conjunctivitis'], category: 'Ophthalmic Antibiotic' },
+      'sodium-cromoglicate-eye': { id: 'sodium-cromoglicate-eye', name: 'Sodium Cromoglicate Eye Drops', genericName: 'Sodium Cromoglicate', form: 'Ophthalmic Solution', commonStrengths: ['2%'], referenceFrequency: '1–2 drops in each eye 4 times daily', purpose: 'Mast cell stabilizer preventing degranulation and release of histamine in allergic conjunctivitis.', precautions: ['Prophylactic agent — start 1–2 weeks before anticipated allergy season for peak efficacy'], relatedDiseases: ['conjunctivitis'], category: 'Ophthalmic Mast Cell Stabilizer' },
+      'olopatadine-eye': { id: 'olopatadine-eye', name: 'Olopatadine Eye Drops (Patanol)', genericName: 'Olopatadine HCl', form: 'Ophthalmic Solution', commonStrengths: ['0.1%', '0.2%'], referenceFrequency: '1 drop in affected eye(s) 1–2 times daily', purpose: 'Dual-action selective histamine H1-antagonist and mast cell stabilizer for rapid allergy relief.', precautions: ['Remove soft contact lenses prior to instillation; wait 10–15 min before reinserting'], relatedDiseases: ['conjunctivitis'], category: 'Ophthalmic Antihistamine' },
+      'artificial-tears': { id: 'artificial-tears', name: 'Carboxymethylcellulose Tears', genericName: 'Carboxymethylcellulose 0.5% / HPMC', form: 'Ophthalmic Drops (Preservative-free preferred)', commonStrengths: ['0.5%', '1%'], referenceFrequency: '1–2 drops in each eye 4–6 times daily or as needed', purpose: 'Demulcent and lubricant enhancing tear film thickness and shielding corneal epithelium.', precautions: ['Preservative-free unit-dose vials are strongly recommended if using > 4 times daily', 'Transient mild blurring for 30 seconds after instillation'], relatedDiseases: ['dry-eye', 'conjunctivitis'], category: 'Ocular Lubricant' },
+      'cyclosporine-eye': { id: 'cyclosporine-eye', name: 'Cyclosporine Eye Emulsion (Restasis)', genericName: 'Cyclosporine Ophthalmic Emulsion', form: 'Ophthalmic Single-Use Vials', commonStrengths: ['0.05%'], referenceFrequency: '1 drop in each eye twice daily (12 hours apart)', purpose: 'Immunomodulatory agent suppressing ocular surface T-cell activation to restore natural tear production.', precautions: ['Requires 3–6 months of continuous twice-daily therapy for full therapeutic tear benefit', 'Temporary mild ocular burning sensation upon instillation is common'], relatedDiseases: ['dry-eye'], category: 'Ophthalmic Immunomodulator' },
+      lifitegrast: { id: 'lifitegrast', name: 'Lifitegrast Eye Solution (Xiidra)', genericName: 'Lifitegrast', form: 'Ophthalmic Solution', commonStrengths: ['5%'], referenceFrequency: '1 drop in each eye twice daily', purpose: 'LFA-1 antagonist blocking interaction with ICAM-1 to diminish inflammation in dry eye disease.', precautions: ['May produce altered taste sensation (dysgeusia) in mouth after instillation'], relatedDiseases: ['dry-eye'], category: 'Ophthalmic Anti-Inflammatory' },
+      nitrofurantoin: { id: 'nitrofurantoin', name: 'Nitrofurantoin (Macrobid)', genericName: 'Nitrofurantoin Monohydrate/Macrocrystals', form: 'Capsule (Oral)', commonStrengths: ['100 mg'], referenceFrequency: '100 mg twice daily with food for 5 days', purpose: 'First-line urinary tract antiseptic concentrated in bladder urine against E. coli.', precautions: ['ALWAYS TAKE WITH MEALS to maximize absorption and reduce nausea', 'Turns urine harmless dark yellow/brown', 'Ineffective for upper kidney infections (pyelonephritis)', 'Avoid if eGFR < 30'], relatedDiseases: ['uti'], category: 'Urinary Antibiotic' },
+      trimethoprim: { id: 'trimethoprim', name: 'Trimethoprim-Sulfamethoxazole', genericName: 'Co-Trimoxazole (TMP-SMX)', form: 'Tablet (Oral)', commonStrengths: ['160/800 mg (DS)'], referenceFrequency: '1 Double-Strength tablet twice daily for 3 days', purpose: 'Sequential bacterial folate pathway inhibitor for uncomplicated cystitis.', precautions: ['Confirm absence of sulfa drug allergy', 'Maintain high fluid intake to prevent crystalluria', 'Monitor potassium in elderly'], relatedDiseases: ['uti'], category: 'Antibiotic' },
+      'ciprofloxacin-uti': { id: 'ciprofloxacin-uti', name: 'Ciprofloxacin', genericName: 'Ciprofloxacin HCl', form: 'Tablet (Oral)', commonStrengths: ['250 mg', '500 mg'], referenceFrequency: '500 mg twice daily for 7–14 days (complicated UTI/pyelonephritis)', purpose: 'Fluoroquinolone inhibiting bacterial DNA gyrase; reserved for complicated UTIs.', precautions: ['FDA Black Box Warning: Tendinitis and tendon rupture risk', 'Do not take with antacids, iron, or milk within 2 hours', 'Avoid in pregnancy'], relatedDiseases: ['uti'], category: 'Fluoroquinolone' },
+      phenazopyridine: { id: 'phenazopyridine', name: 'Phenazopyridine (Pyridium)', genericName: 'Phenazopyridine HCl', form: 'Tablet (Oral)', commonStrengths: ['100 mg', '200 mg'], referenceFrequency: '200 mg three times daily after meals for MAXIMUM 2 DAYS ONLY', purpose: 'Topical urinary tract mucosal analgesic relieving severe burning dysuria and urgency.', precautions: ['NOT AN ANTIBIOTIC — only masks pain; must be taken concurrently with antibacterial', 'Turns urine and tears bright neon orange (permanently stains clothes and contact lenses)', 'Limit to 48 hours maximum'], relatedDiseases: ['uti'], category: 'Urinary Analgesic' },
+      acyclovir: { id: 'acyclovir', name: 'Acyclovir', genericName: 'Acyclovir', form: 'Tablet / Suspension / IV', commonStrengths: ['200 mg', '400 mg', '800 mg'], referenceFrequency: '800 mg 5 times daily (every 4 hours while awake) for 7 days', purpose: 'Guanosine analogue viral DNA polymerase inhibitor halting Varicella-Zoster replication.', precautions: ['Must be initiated within 24–48 hours of rash onset for meaningful clinical benefit in chickenpox', 'Drink copious fluids to avoid renal tubular crystallization'], relatedDiseases: ['chicken-pox'], category: 'Antiviral' },
+      escitalopram: { id: 'escitalopram', name: 'Escitalopram (Lexapro)', genericName: 'Escitalopram Oxalate', form: 'Tablet / Oral Solution', commonStrengths: ['5 mg', '10 mg', '20 mg'], referenceFrequency: '10–20 mg once daily in morning or evening', purpose: 'Highly selective serotonin reuptake inhibitor (SSRI) for generalized anxiety disorder and major depression.', precautions: ['Full therapeutic response requires 3–6 weeks of continuous daily use', 'DO NOT DISCONTINUE ABRUPTLY — must taper under psychiatric guidance', 'FDA Black Box Warning: Monitor youth for emergent suicidal ideation during first few weeks', 'Do not combine with MAO inhibitors'], relatedDiseases: ['anxiety-disorder', 'depression'], category: 'SSRI Antidepressant' },
+      sertraline: { id: 'sertraline', name: 'Sertraline (Zoloft)', genericName: 'Sertraline HCl', form: 'Tablet (Oral)', commonStrengths: ['25 mg', '50 mg', '100 mg'], referenceFrequency: '50–150 mg once daily with morning breakfast or evening meal', purpose: 'SSRI with mild dopamine reuptake inhibition for depression, anxiety, PTSD, and panic disorder.', precautions: ['Transient gastrointestinal nausea and loose stools common in week 1 — take with food', 'Taper gradually when discontinuing'], relatedDiseases: ['anxiety-disorder', 'depression'], category: 'SSRI Antidepressant' },
+      buspirone: { id: 'buspirone', name: 'Buspirone', genericName: 'Buspirone HCl', form: 'Tablet (Oral)', commonStrengths: ['5 mg', '10 mg', '15 mg'], referenceFrequency: '7.5–15 mg twice daily consistently', purpose: 'Selective 5-HT1A partial agonist anxiolytic without sedative, muscle relaxant, or dependency potential.', precautions: ['Requires 2–4 weeks of consistent dosing — NOT for acute PRN panic attack relief', 'Zero abuse potential or addiction risk'], relatedDiseases: ['anxiety-disorder'], category: 'Non-Benzodiazepine Anxiolytic' },
+      alprazolam: { id: 'alprazolam', name: 'Alprazolam (Xanax)', genericName: 'Alprazolam', form: 'Tablet (Oral)', commonStrengths: ['0.25 mg', '0.5 mg', '1 mg'], referenceFrequency: '0.25–0.5 mg 2–3 times daily strictly short-term as prescribed', purpose: 'High-potency short-acting triazolobenzodiazepine enhancing GABA-A receptor inhibitory neurotransmission for acute severe panic.', precautions: ['HIGH RISK OF TOLERANCE, PHYSICAL DEPENDENCE, AND ADDICTION — strictly short-term use only (max 2–4 weeks)', 'NEVER COMBINE WITH ALCOHOL OR OPIOIDS (Fatal respiratory depression risk)', 'Causes sedation — no driving'], relatedDiseases: ['anxiety-disorder'], category: 'Benzodiazepine' },
+      fluoxetine: { id: 'fluoxetine', name: 'Fluoxetine (Prozac)', genericName: 'Fluoxetine HCl', form: 'Capsule (Oral)', commonStrengths: ['10 mg', '20 mg', '40 mg'], referenceFrequency: '20–40 mg once daily in the morning', purpose: 'Activating SSRI antidepressant with long-acting active metabolite (norfluoxetine).', precautions: ['Take in morning to avoid insomnia', 'Long half-life (1–2 weeks) provides self-tapering effect', 'Allow 5-week washout before initiating MAOIs'], relatedDiseases: ['depression'], category: 'SSRI Antidepressant' },
+      venlafaxine: { id: 'venlafaxine', name: 'Venlafaxine XR (Effexor)', genericName: 'Venlafaxine HCl Extended-Release', form: 'Extended-Release Capsule', commonStrengths: ['37.5 mg', '75 mg', '150 mg'], referenceFrequency: '75–225 mg once daily with food', purpose: 'Serotonin-Norepinephrine Reuptake Inhibitor (SNRI) for treatment-resistant depression and anxiety.', precautions: ['Swallow capsule whole with food', 'Monitor blood pressure at higher doses (≥ 150 mg)', 'Severe discontinuation syndrome if missed — strictly avoid abrupt cessation'], relatedDiseases: ['depression'], category: 'SNRI Antidepressant' },
+      dextromethorphan: { id: 'dextromethorphan', name: 'Dextromethorphan (DXM)', genericName: 'Dextromethorphan HBr', form: 'Syrup / Tablet', commonStrengths: ['10 mg/5 mL', '30 mg tablet'], referenceFrequency: '15–30 mg every 6–8 hours as needed', purpose: 'Centrally-acting antitussive suppressing medullary cough center reflex for non-productive dry cough.', precautions: ['Do not use for productive cough requiring phlegm clearance', 'Contraindicated with MAOI antidepressants'], relatedDiseases: ['common-cold', 'bronchitis'], category: 'Antitussive' },
+      guaifenesin: { id: 'guaifenesin', name: 'Guaifenesin (Mucinex)', genericName: 'Guaifenesin', form: 'Tablet / Syrup', commonStrengths: ['200 mg', '400 mg', '600 mg ER'], referenceFrequency: '200–400 mg every 4 hours with plenty of water', purpose: 'Expectorant decreasing mucus surface tension to increase productive cough hydration.', precautions: ['Must drink generous fluids for maximum mucolytic efficacy'], relatedDiseases: ['bronchitis'], category: 'Expectorant' }
+    };
+
+    // --- AGENT HIERARCHY DEFINITION ---
+    const AGENTS = [
+      { id: 'supervisor', name: 'Supervisor Agent', shortName: 'SUPERVISOR', role: 'Central Master Controller & Orchestrator', icon: 'crown', level: 0, outputs: ['Task delegation to all sub-agents', 'Workflow coordination', 'Final synthesis trigger'] },
+      { id: 'image-validation', name: 'Image Validation Agent', shortName: 'IMG-VALID', role: 'Medical Image Preprocessor & QC', icon: 'scan-eye', level: 1, outputs: ['Image format & integrity check', 'Visual resolution extraction', 'Preprocessing metadata'] },
+      { id: 'disease-detection', name: 'Disease Detection Agent', shortName: 'DX-DETECT', role: 'Clinical Pattern Matching & ICD Indexing', icon: 'microscope', level: 1, outputs: ['Primary condition mapping', 'Differential classification', 'ICD-10 cross-referencing'] },
+      { id: 'symptom-analysis', name: 'Symptom Analysis Agent', shortName: 'SX-ANALYZE', role: 'Symptom Correlation & Severity Correlator', icon: 'clipboard-list', level: 1, outputs: ['Symptom cluster aggregation', 'Severity stratification', 'Clinical indicator flags'] },
+      { id: 'risk-assessment', name: 'Risk Assessment Agent', shortName: 'RISK-EVAL', role: 'Threat Level Quantifier & Triage Engine', icon: 'shield-alert', level: 1, outputs: ['Risk tier (Critical/High/Medium/Low)', 'Warning sign flags', 'Triage urgency level'] },
+      { id: 'medicine-reference', name: 'Medicine Reference Agent', shortName: 'MED-REF', role: 'Pharmacological Reference Compiler', icon: 'pill', level: 2, outputs: ['Formulary medicine references', 'Strength & frequency guidelines', 'Key contraindication warnings'] },
+      { id: 'recommendation', name: 'Recommendation Agent', shortName: 'RECOMMEND', role: 'Clinical Guidance Synthesizer', icon: 'lightbulb', level: 3, outputs: ['General care guidelines', 'Self-management steps', 'Professional consultation triggers'] },
+      { id: 'final-report', name: 'Final Report Agent', shortName: 'REPORT', role: 'Executive Report Compiler', icon: 'file-text', level: 4, outputs: ['Comprehensive multi-agent clinical summary', 'Executive triage summary', 'Demo metrics'] }
+    ];
+
+    const AGENT_SEQUENCE = ['supervisor', 'image-validation', 'disease-detection', 'symptom-analysis', 'risk-assessment', 'medicine-reference', 'recommendation', 'final-report'];
+
+    const RISK_CONFIG = {
+      critical: { label: 'Critical Risk', color: '#dc2626', bg: 'bg-red-950/60', border: 'border-red-600', text: 'text-red-400', score: 96 },
+      high:     { label: 'High Risk',     color: '#f97316', bg: 'bg-orange-950/60', border: 'border-orange-600', text: 'text-orange-400', score: 78 },
+      medium:   { label: 'Medium Risk',   color: '#eab308', bg: 'bg-yellow-950/60', border: 'border-yellow-600', text: 'text-yellow-400', score: 54 },
+      low:      { label: 'Low Risk',      color: '#22c55e', bg: 'bg-emerald-950/60', border: 'border-emerald-600', text: 'text-emerald-400', score: 28 }
+    };
+
+    // Helper to refresh Lucide icons
+    const useLucide = () => {
+      useEffect(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      });
+    };
+
+    // --- REUSABLE COMPONENTS ---
+    function DisclaimerBanner({ full = false }) {
+      useLucide();
+      if (!full) {
+        return (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-amber-800/40 bg-amber-950/20 text-amber-300 text-xs">
+            <i data-lucide="alert-triangle" className="w-4 h-4 text-amber-400 flex-shrink-0"></i>
+            <p>
+              <strong className="text-amber-400">Educational Demo Only:</strong> This application does not provide confirmed medical diagnosis or personalized prescriptions. Medicine and dosage information is for general educational reference only. Consult a qualified healthcare professional.
+            </p>
+          </div>
+        );
+      }
+      return (
+        <div className="rounded-xl border border-amber-800/50 bg-amber-950/25 p-5 text-amber-200">
+          <div className="flex items-start gap-3.5">
+            <i data-lucide="alert-triangle" className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5"></i>
+            <div className="space-y-1.5 text-xs">
+              <h4 className="text-sm font-bold text-amber-400">Official Medical Disclaimer & Educational Notice</h4>
+              <p className="text-amber-200/80 leading-relaxed">
+                This is an educational healthcare demonstration illustrating a hierarchical multi-agent AI architecture. All diagnostic findings, risk scores, and clinical correlations are simulated local demonstrations clearly designated as <strong>DEMO AI RESULTS</strong>.
+              </p>
+              <p className="text-amber-200/80 leading-relaxed">
+                This system does not perform real-world medical diagnoses, nor does it issue binding medical prescriptions. Never disregard professional medical advice or delay seeking it because of information presented here. In any medical emergency, contact your local emergency services immediately.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function RiskBadge({ level }) {
+      const cfg = RISK_CONFIG[level] || RISK_CONFIG.low;
+      return (
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-bold font-mono tracking-wider border ${cfg.bg} ${cfg.border} ${cfg.text}`}>
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cfg.color }}></span>
+          {cfg.label}
+        </span>
+      );
+    }
+
+    // --- MAIN PAGES ---
+
+    // 1. COMMAND CENTER PAGE
+    function CommandCenter({ onNavigate, onSelectDiseaseForAnalysis }) {
+      useLucide();
+      const criticalCount = DISEASES.filter(d => d.riskLevel === 'critical').length;
+      const highCount = DISEASES.filter(d => d.riskLevel === 'high').length;
+
+      return (
+        <div className="p-6 max-w-7xl mx-auto space-y-6">
+          {/* Emergency Hero Banner */}
+          <div className="relative overflow-hidden rounded-2xl p-8 border border-blood-700/60 shadow-2xl"
+               style={{ background: 'linear-gradient(135deg, #3f0d1c 0%, #7f1d1d 45%, #2a050d 100%)' }}>
+            <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+              <div className="max-w-2xl space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-red-950/80 border border-red-600/70">
+                    <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse"></span>
+                    <span className="text-xs font-mono font-bold text-red-300 tracking-widest">COMMAND CENTER ACTIVE</span>
+                  </div>
+                  <span className="px-2.5 py-0.5 text-[10px] font-bold bg-white/10 text-white/80 rounded font-mono border border-white/20">
+                    SUPERVISOR V2.0
+                  </span>
+                </div>
+                <h1 className="text-3xl lg:text-4xl font-black text-white leading-tight">
+                  Hierarchical Multi-Agent <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-200 via-red-400 to-rose-400">
+                    Clinical Intelligence Command Center
+                  </span>
+                </h1>
+                <p className="text-rose-100/75 text-sm leading-relaxed">
+                  Supervisor-controlled medical multi-agent architecture executing distributed pattern recognition, symptom clustering, risk quantification, and pharmacological referencing.
+                </p>
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <button onClick={() => onNavigate('analysis')} 
+                    className="px-6 py-3 rounded-xl bg-blood-600 hover:bg-blood-500 text-white font-bold text-sm shadow-[0_0_20px_rgba(220,38,38,0.5)] transition flex items-center gap-2">
+                    <i data-lucide="zap" className="w-4 h-4"></i> Run Image Analysis
+                  </button>
+                  <button onClick={() => onNavigate('supervisor')} 
+                    className="px-5 py-3 rounded-xl border border-blood-500/50 hover:border-blood-400 text-blood-200 bg-blood-950/50 text-sm font-semibold transition flex items-center gap-2">
+                    <i data-lucide="network" className="w-4 h-4"></i> Inspect Agent Tree
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Grid */}
+              <div className="grid grid-cols-2 gap-3 w-full lg:w-72">
+                <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 text-center">
+                  <div className="text-3xl font-black text-red-400">{DISEASES.length}</div>
+                  <div className="text-[10px] font-mono text-white/60 tracking-wider mt-1 uppercase">Conditions in DB</div>
+                </div>
+                <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 text-center">
+                  <div className="text-3xl font-black text-amber-400">{AGENTS.length}</div>
+                  <div className="text-[10px] font-mono text-white/60 tracking-wider mt-1 uppercase">Active Agents</div>
+                </div>
+                <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 text-center">
+                  <div className="text-3xl font-black text-rose-400">{criticalCount + highCount}</div>
+                  <div className="text-[10px] font-mono text-white/60 tracking-wider mt-1 uppercase">High/Critical Risk</div>
+                </div>
+                <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 text-center">
+                  <div className="text-3xl font-black text-emerald-400">{Object.keys(MEDICINES).length}</div>
+                  <div className="text-[10px] font-mono text-white/60 tracking-wider mt-1 uppercase">Medicine Refs</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DisclaimerBanner />
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="glow-card p-5 rounded-xl">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-mono text-clinical-500 uppercase">Architecture</span>
+                <i data-lucide="crown" className="w-5 h-5 text-blood-400"></i>
+              </div>
+              <div className="text-xl font-bold text-white">Hierarchical Tree</div>
+              <div className="text-xs text-blood-400 mt-1">Supervisor-Centric Control</div>
+            </div>
+            <div className="glow-card p-5 rounded-xl">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-mono text-clinical-500 uppercase">Execution</span>
+                <i data-lucide="activity" className="w-5 h-5 text-emerald-400"></i>
+              </div>
+              <div className="text-xl font-bold text-white">100% Client-Side</div>
+              <div className="text-xs text-emerald-400 mt-1">Zero Cloud Transmission</div>
+            </div>
+            <div className="glow-card p-5 rounded-xl">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-mono text-clinical-500 uppercase">Categories</span>
+                <i data-lucide="layers" className="w-5 h-5 text-amber-400"></i>
+              </div>
+              <div className="text-xl font-bold text-white">{DISEASE_CATEGORIES.length} Domains</div>
+              <div className="text-xs text-amber-400 mt-1">Endocrine to Mental Health</div>
+            </div>
+            <div className="glow-card p-5 rounded-xl">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-mono text-clinical-500 uppercase">Safety Mode</span>
+                <i data-lucide="shield-check" className="w-5 h-5 text-rose-400"></i>
+              </div>
+              <div className="text-xl font-bold text-white">Educational Demo</div>
+              <div className="text-xs text-rose-400 mt-1">Full Medical Disclaimers</div>
+            </div>
+          </div>
+
+          {/* Featured Conditions & Quick Triage */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Top Diseases List */}
+            <div className="lg:col-span-2 glow-card p-6 rounded-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-white">Clinical Conditions Knowledge Base</h3>
+                  <p className="text-xs text-clinical-500">Select any condition to review or initiate analysis</p>
+                </div>
+                <button onClick={() => onNavigate('disease')} className="text-xs font-semibold text-blood-400 hover:text-blood-300 flex items-center gap-1">
+                  View All ({DISEASES.length}) →
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1 custom-scroll">
+                {DISEASES.slice(0, 10).map((d) => (
+                  <div key={d.id} 
+                    className="p-3.5 rounded-lg bg-clinical-950/70 border border-blood-900/30 hover:border-blood-600/60 transition flex flex-col justify-between group">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-bold text-white group-hover:text-blood-300 transition">{d.name}</span>
+                        <RiskBadge level={d.riskLevel} />
+                      </div>
+                      <p className="text-[11px] text-clinical-400 line-clamp-2 leading-relaxed">{d.description}</p>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between pt-2 border-t border-clinical-900">
+                      <span className="text-[10px] text-clinical-500 font-mono">{d.category} · ICD: {d.icdCode}</span>
+                      <button 
+                        onClick={() => { onSelectDiseaseForAnalysis(d); onNavigate('analysis'); }}
+                        className="text-[11px] text-blood-400 hover:text-white font-medium flex items-center gap-1">
+                        Analyze <i data-lucide="chevron-right" className="w-3 h-3"></i>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Agent Live Status */}
+            <div className="glow-card p-6 rounded-xl space-y-4">
+              <div>
+                <h3 className="text-base font-bold text-white">Hierarchical Agent Cluster</h3>
+                <p className="text-xs text-clinical-500">8 autonomous agents under Supervisor</p>
+              </div>
+
+              <div className="space-y-2.5">
+                {AGENTS.map((agent) => (
+                  <div key={agent.id} className="p-2.5 rounded-lg bg-clinical-950/60 border border-blood-950 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-blood-950 border border-blood-800/50 flex items-center justify-center">
+                        <i data-lucide={agent.icon} className="w-3.5 h-3.5 text-blood-400"></i>
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-clinical-200">{agent.shortName}</div>
+                        <div className="text-[10px] text-clinical-500">{agent.name}</div>
+                      </div>
+                    </div>
+                    <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> READY
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 2. DISEASE INTELLIGENCE PAGE
+    function DiseaseIntelligence({ onSelectDiseaseForAnalysis, onNavigate }) {
+      useLucide();
+      const [search, setSearch] = useState('');
+      const [selectedCat, setSelectedCat] = useState('All');
+      const [expandedId, setExpandedId] = useState(null);
+
+      const filtered = useMemo(() => {
+        return DISEASES.filter(d => {
+          const matchCat = selectedCat === 'All' || d.category === selectedCat;
+          const matchSearch = search.trim() === '' || 
+            d.name.toLowerCase().includes(search.toLowerCase()) ||
+            d.category.toLowerCase().includes(search.toLowerCase()) ||
+            d.symptoms.some(s => s.toLowerCase().includes(search.toLowerCase())) ||
+            d.description.toLowerCase().includes(search.toLowerCase());
+          return matchCat && matchSearch;
+        });
+      }, [search, selectedCat]);
+
+      return (
+        <div className="p-6 max-w-7xl mx-auto space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-black text-white">Disease Intelligence Database</h2>
+              <p className="text-xs text-clinical-400 mt-1">Comprehensive clinical definitions, symptoms, causes, warning signs & general care</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-full bg-blood-950 border border-blood-800 text-blood-300 text-xs font-mono font-bold">
+                {filtered.length} of {DISEASES.length} Conditions
+              </span>
+            </div>
+          </div>
+
+          <DisclaimerBanner />
+
+          {/* Search & Category Filter Bar */}
+          <div className="space-y-3">
+            <div className="relative">
+              <i data-lucide="search" className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-clinical-500"></i>
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search across all 36 conditions by name, symptom (e.g. wheezing, fatigue), or description..."
+                className="w-full bg-clinical-950/80 border border-blood-900/50 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-clinical-600 focus:outline-none focus:border-blood-500 shadow-inner"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-clinical-500 hover:text-white">
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Category Pills */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                onClick={() => setSelectedCat('All')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                  selectedCat === 'All' 
+                    ? 'bg-blood-700 border-blood-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.4)]' 
+                    : 'bg-clinical-950 border-clinical-800 text-clinical-400 hover:border-blood-800 hover:text-clinical-200'
+                }`}
+              >
+                All Categories ({DISEASES.length})
+              </button>
+              {DISEASE_CATEGORIES.map(cat => {
+                const count = DISEASES.filter(d => d.category === cat).length;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCat(cat)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                      selectedCat === cat 
+                        ? 'bg-blood-700 border-blood-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.4)]' 
+                        : 'bg-clinical-950 border-clinical-800 text-clinical-400 hover:border-blood-800 hover:text-clinical-200'
+                    }`}
+                  >
+                    {cat} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Diseases Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {filtered.map(disease => {
+              const isExpanded = expandedId === disease.id;
+              const relatedMeds = (disease.medicineIds || []).map(id => MEDICINES[id]).filter(Boolean);
+
+              return (
+                <div key={disease.id} className="glow-card rounded-xl overflow-hidden transition-all duration-300 border border-blood-900/30">
+                  {/* Card Header */}
+                  <div 
+                    onClick={() => setExpandedId(isExpanded ? null : disease.id)}
+                    className="p-5 cursor-pointer hover:bg-white/[0.02] flex items-start justify-between gap-4">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <h3 className="text-base font-bold text-white">{disease.name}</h3>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-clinical-900 border border-clinical-800 text-clinical-400">
+                          {disease.category}
+                        </span>
+                        <span className="text-[10px] font-mono text-blood-400">ICD: {disease.icdCode}</span>
+                      </div>
+                      <p className="text-xs text-clinical-400 leading-relaxed line-clamp-2">{disease.description}</p>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                      <RiskBadge level={disease.riskLevel} />
+                      <span className="text-xs text-blood-400 font-semibold flex items-center gap-1 mt-1">
+                        {isExpanded ? 'Less' : 'Details'} <i data-lucide={isExpanded ? 'chevron-up' : 'chevron-down'} className="w-3.5 h-3.5"></i>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Expanded Accordion Content */}
+                  {isExpanded && (
+                    <div className="p-5 pt-0 border-t border-blood-950/80 space-y-4 bg-black/20 text-xs">
+                      {/* Symptoms */}
+                      <div>
+                        <h4 className="text-[11px] font-mono font-bold text-rose-400 uppercase tracking-wider mb-2">Canonical Symptoms ({disease.symptoms.length})</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {disease.symptoms.map((sx, idx) => (
+                            <span key={idx} className="px-2.5 py-1 rounded bg-clinical-900/80 border border-clinical-800 text-clinical-300 text-[11px]">
+                              • {sx}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Causes */}
+                      <div>
+                        <h4 className="text-[11px] font-mono font-bold text-amber-400 uppercase tracking-wider mb-1.5">Etiology & Triggers</h4>
+                        <ul className="list-disc list-inside space-y-1 text-clinical-300 text-[11px]">
+                          {disease.causes.map((c, idx) => (
+                            <li key={idx}>{c}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Warning Signs */}
+                      <div className="p-3.5 rounded-lg bg-red-950/30 border border-red-800/40 text-red-200">
+                        <h4 className="text-[11px] font-bold text-red-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                          <i data-lucide="alert-circle" className="w-3.5 h-3.5 text-red-400"></i> Warning Signs — Seek Medical Attention
+                        </h4>
+                        <ul className="list-disc list-inside space-y-0.5 text-[11px] text-red-200/90">
+                          {disease.warningSigns.map((w, idx) => (
+                            <li key={idx}>{w}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* General Care */}
+                      <div>
+                        <h4 className="text-[11px] font-mono font-bold text-emerald-400 uppercase tracking-wider mb-1.5">General Self-Care & Lifestyle Guidance</h4>
+                        <ul className="list-disc list-inside space-y-1 text-clinical-300 text-[11px]">
+                          {disease.generalCare.map((gc, idx) => (
+                            <li key={idx}>{gc}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Medicine References */}
+                      {relatedMeds.length > 0 && (
+                        <div>
+                          <h4 className="text-[11px] font-mono font-bold text-blood-400 uppercase tracking-wider mb-1.5">Educational Medicine References</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {relatedMeds.map(m => (
+                              <div key={m.id} className="p-2.5 rounded bg-clinical-950 border border-blood-950">
+                                <div className="font-bold text-clinical-200">{m.name} ({m.genericName})</div>
+                                <div className="text-[10px] text-clinical-500 font-mono">{m.form} · {m.commonStrengths.join(', ')}</div>
+                                <div className="text-[10px] text-amber-500/80 mt-1 italic">Ref: {m.referenceFrequency}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Bar */}
+                      <div className="pt-3 flex items-center justify-end gap-3 border-t border-clinical-900">
+                        <button 
+                          onClick={() => { onSelectDiseaseForAnalysis(disease); onNavigate('analysis'); }}
+                          className="px-4 py-2 rounded-lg bg-blood-600 hover:bg-blood-500 text-white font-bold text-xs flex items-center gap-1.5 transition">
+                          <i data-lucide="zap" className="w-3.5 h-3.5"></i> Run Agent Analysis for {disease.name}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // 3. MEDICINE VAULT PAGE
+    function MedicineVault({ onNavigate }) {
+      useLucide();
+      const [search, setSearch] = useState('');
+      const [selectedDiseaseId, setSelectedDiseaseId] = useState('All');
+      const [expandedMedId, setExpandedMedId] = useState(null);
+
+      const allMedicines = useMemo(() => Object.values(MEDICINES), []);
+
+      const filteredMeds = useMemo(() => {
+        return allMedicines.filter(m => {
+          const matchDisease = selectedDiseaseId === 'All' || m.relatedDiseases.includes(selectedDiseaseId);
+          const matchSearch = search.trim() === '' ||
+            m.name.toLowerCase().includes(search.toLowerCase()) ||
+            m.genericName.toLowerCase().includes(search.toLowerCase()) ||
+            m.category.toLowerCase().includes(search.toLowerCase()) ||
+            m.purpose.toLowerCase().includes(search.toLowerCase());
+          return matchDisease && matchSearch;
+        });
+      }, [allMedicines, search, selectedDiseaseId]);
+
+      return (
+        <div className="p-6 max-w-7xl mx-auto space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-black text-white">Medicine Vault</h2>
+              <p className="text-xs text-clinical-400 mt-1">Educational pharmacological references, forms, strengths, and crucial clinical precautions</p>
+            </div>
+            <span className="px-3 py-1 rounded-full bg-blood-950 border border-blood-800 text-blood-300 text-xs font-mono font-bold">
+              {filteredMeds.length} Medicines Listed
+            </span>
+          </div>
+
+          {/* Mandatory Medicine Disclaimer */}
+          <div className="rounded-xl border border-amber-800/60 bg-amber-950/20 p-4 text-amber-200">
+            <div className="flex items-start gap-3">
+              <i data-lucide="shield-alert" className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5"></i>
+              <div className="text-xs space-y-1">
+                <h4 className="font-bold text-amber-400">Medicine Reference Notice</h4>
+                <p className="text-amber-200/85">
+                  General educational information. Medicine selection and dosage must be confirmed by a qualified healthcare professional.
+                  Do not self-prescribe or adjust doses based on this catalog.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Search & Disease Filter Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="md:col-span-2 relative">
+              <i data-lucide="search" className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-clinical-500"></i>
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search by brand name, generic name (e.g. Metformin, Amlodipine), or category..."
+                className="w-full bg-clinical-950/80 border border-blood-900/50 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-clinical-600 focus:outline-none focus:border-blood-500"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-clinical-500 hover:text-white">Clear</button>
+              )}
+            </div>
+
+            <select
+              value={selectedDiseaseId}
+              onChange={e => setSelectedDiseaseId(e.target.value)}
+              className="bg-clinical-950/80 border border-blood-900/50 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blood-500"
+            >
+              <option value="All">Filter by Any Condition ({DISEASES.length})</option>
+              {DISEASES.map(d => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Medicines Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredMeds.map(med => {
+              const isExpanded = expandedMedId === med.id;
+              const relatedDiseases = (med.relatedDiseases || []).map(id => DISEASES.find(d => d.id === id)).filter(Boolean);
+
+              return (
+                <div key={med.id} className="glow-card rounded-xl p-5 border border-blood-900/35 flex flex-col justify-between space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="text-base font-bold text-white">{med.name}</h3>
+                        <div className="text-xs text-blood-400 font-mono">{med.genericName}</div>
+                      </div>
+                      <span className="px-2 py-0.5 text-[10px] font-mono rounded bg-clinical-900 text-clinical-400 border border-clinical-800">
+                        {med.category}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-clinical-400 leading-relaxed">{med.purpose}</div>
+
+                    <div className="pt-2 border-t border-clinical-900 space-y-1.5 text-xs">
+                      <div>
+                        <span className="text-[10px] font-mono text-clinical-500 uppercase">Form:</span>{' '}
+                        <span className="text-clinical-200 font-medium">{med.form}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-mono text-clinical-500 uppercase">Common Strengths:</span>{' '}
+                        <span className="text-rose-300 font-mono">{med.commonStrengths.join(' · ')}</span>
+                      </div>
+                      <div className="p-2.5 rounded bg-clinical-950 border border-blood-950 text-[11px] text-amber-400/90">
+                        <strong className="text-amber-400">Ref. Frequency:</strong> {med.referenceFrequency}
+                      </div>
+                    </div>
+
+                    {/* Accordion for precautions */}
+                    {isExpanded && (
+                      <div className="space-y-3 pt-2 text-xs border-t border-clinical-900">
+                        <div>
+                          <h4 className="text-[10px] font-mono font-bold text-red-400 uppercase tracking-wider mb-1">Important Precautions & Warnings</h4>
+                          <ul className="list-disc list-inside space-y-0.5 text-[11px] text-clinical-300">
+                            {med.precautions.map((p, idx) => (
+                              <li key={idx}>{p}</li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {relatedDiseases.length > 0 && (
+                          <div>
+                            <h4 className="text-[10px] font-mono font-bold text-clinical-500 uppercase tracking-wider mb-1">Referenced In:</h4>
+                            <div className="flex flex-wrap gap-1">
+                              {relatedDiseases.map(d => (
+                                <span key={d.id} className="text-[10px] px-2 py-0.5 rounded bg-blood-950/80 text-blood-300 border border-blood-900">
+                                  {d.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <button 
+                    onClick={() => setExpandedMedId(isExpanded ? null : med.id)}
+                    className="w-full py-2 rounded-lg bg-clinical-950 hover:bg-blood-950/60 border border-clinical-800 hover:border-blood-800 text-xs text-clinical-300 hover:text-white font-medium transition flex items-center justify-center gap-1">
+                    {isExpanded ? 'Hide Precautions' : 'View Precautions & Indications'}
+                    <i data-lucide={isExpanded ? 'chevron-up' : 'chevron-down'} className="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // 4. MEDICAL IMAGE ANALYSIS PAGE (With Drag-and-Drop & Live Hierarchical Agent Animation)
+    function ImageAnalysis({ selectedDisease, onSelectDisease, onAnalysisComplete, onNavigate }) {
+      useLucide();
+      const [imageFile, setImageFile] = useState(null);
+      const [imagePreview, setImagePreview] = useState(null);
+      const [isDragging, setIsDragging] = useState(false);
+      const [isAnalyzing, setIsAnalyzing] = useState(false);
+      const [currentAgentIdx, setCurrentAgentIdx] = useState(-1);
+      const [completedAgents, setCompletedAgents] = useState([]);
+      const [agentLogs, setAgentLogs] = useState({});
+
+      const fileInputRef = useRef(null);
+
+      // Handle Image File Input
+      const handleFile = (file) => {
+        if (!file) return;
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+          alert('Please upload a valid JPG, PNG, or WEBP medical image.');
+          return;
+        }
+        setImageFile(file);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setImagePreview(e.target.result);
+        };
+        reader.readAsDataURL(file);
+      };
+
+      const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          handleFile(e.dataTransfer.files[0]);
+        }
+      };
+
+      // Hierarchical Agent Execution Pipeline
+      const runPipeline = async () => {
+        if (!selectedDisease) {
+          alert('Please select a condition from the database to analyze.');
+          return;
+        }
+
+        setIsAnalyzing(true);
+        setCompletedAgents([]);
+        setCurrentAgentIdx(0);
+        setAgentLogs({});
+
+        const logs = {};
+
+        for (let i = 0; i < AGENT_SEQUENCE.length; i++) {
+          const agentId = AGENT_SEQUENCE[i];
+          const agentObj = AGENTS.find(a => a.id === agentId);
+          setCurrentAgentIdx(i);
+
+          // Simulated processing duration per agent
+          await new Promise(res => setTimeout(res, 750 + Math.random() * 400));
+
+          // Generate simulated agent output
+          if (agentId === 'supervisor') {
+            logs[agentId] = `SUPERVISOR initialized. Task tree dispatched to 4 parallel level-1 diagnostic agents.`;
+          } else if (agentId === 'image-validation') {
+            logs[agentId] = imageFile 
+              ? `Image verified: "${imageFile.name}" (${(imageFile.size / 1024).toFixed(1)} KB, ${imageFile.type}). No pixel corruption.`
+              : `Reference mode: Disease benchmark baseline loaded.`;
+          } else if (agentId === 'disease-detection') {
+            logs[agentId] = `Identified: ${selectedDisease.name} (ICD: ${selectedDisease.icdCode}). Pattern correlation score: ${Math.floor(82 + Math.random() * 14)}%.`;
+          } else if (agentId === 'symptom-analysis') {
+            logs[agentId] = `Correlated ${selectedDisease.symptoms.length} symptom vectors. Dominant cluster: ${selectedDisease.symptoms.slice(0, 3).join(', ')}.`;
+          } else if (agentId === 'risk-assessment') {
+            logs[agentId] = `Risk evaluated as ${selectedDisease.riskLevel.toUpperCase()}. Flagged ${selectedDisease.warningSigns.length} warning thresholds.`;
+          } else if (agentId === 'medicine-reference') {
+            logs[agentId] = `Retrieved ${(selectedDisease.medicineIds || []).length} educational medicine reference entries with dosing precautions.`;
+          } else if (agentId === 'recommendation') {
+            logs[agentId] = `Synthesized ${selectedDisease.generalCare.length} lifestyle & general self-care recommendations.`;
+          } else if (agentId === 'final-report') {
+            logs[agentId] = `Final report compiled. Supervisor approved synthesis.`;
+          }
+
+          setAgentLogs({ ...logs });
+          setCompletedAgents(prev => [...prev, agentId]);
+        }
+
+        setIsAnalyzing(false);
+
+        // Build report result
+        const finalResult = {
+          disease: selectedDisease,
+          imageName: imageFile ? imageFile.name : 'Reference Clinical Dataset',
+          imageSize: imageFile ? `${(imageFile.size / 1024).toFixed(1)} KB` : 'N/A',
+          imagePreview: imagePreview,
+          confidence: Math.floor(84 + Math.random() * 12),
+          timestamp: new Date().toLocaleString(),
+          agentLogs: logs,
+          isDemo: true
+        };
+
+        onAnalysisComplete(finalResult);
+      };
+
+      return (
+        <div className="p-6 max-w-7xl mx-auto space-y-6">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-black text-white">Medical Image Analysis</h2>
+              <span className="px-2.5 py-0.5 text-xs font-mono font-bold bg-blood-950 border border-blood-700 text-blood-400 rounded">
+                DEMO AI AGENT PIPELINE
+              </span>
+            </div>
+            <p className="text-xs text-clinical-400 mt-1">Upload an image and run the Supervisor-controlled Hierarchical Multi-Agent workflow</p>
+          </div>
+
+          <DisclaimerBanner />
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Column: Image Upload & Condition Picker */}
+            <div className="lg:col-span-5 space-y-5">
+              {/* Image Upload Drag & Drop Box */}
+              <div className="glow-card p-5 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <i data-lucide="image" className="w-4 h-4 text-blood-400"></i>
+                    1. Upload Medical Image
+                  </h3>
+                  {imageFile && (
+                    <button 
+                      onClick={() => { setImageFile(null); setImagePreview(null); }}
+                      className="text-[11px] text-red-400 hover:text-red-300 flex items-center gap-1 font-mono">
+                      <i data-lucide="trash-2" className="w-3 h-3"></i> Remove
+                    </button>
+                  )}
+                </div>
+
+                {!imagePreview ? (
+                  <div
+                    onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition flex flex-col items-center justify-center gap-3 ${
+                      isDragging 
+                        ? 'border-blood-500 bg-blood-950/40' 
+                        : 'border-blood-900/40 hover:border-blood-700/70 bg-black/30'
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-blood-950 border border-blood-800 flex items-center justify-center text-blood-400">
+                      <i data-lucide="upload-cloud" className="w-6 h-6"></i>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-clinical-200">Drag & drop your medical image here</p>
+                      <p className="text-[11px] text-clinical-500">or click to browse from device</p>
+                    </div>
+                    <span className="text-[10px] font-mono text-clinical-600 px-2 py-0.5 rounded bg-clinical-950">
+                      JPG, PNG, WEBP (Max 10 MB)
+                    </span>
+                    <input 
+                      ref={fileInputRef} 
+                      type="file" 
+                      accept="image/jpeg,image/png,image/webp" 
+                      onChange={e => handleFile(e.target.files[0])} 
+                      className="hidden" 
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="relative rounded-lg overflow-hidden border border-blood-900/50 bg-black/60 flex items-center justify-center max-h-56">
+                      <img src={imagePreview} alt="Medical Preview" className="object-contain max-h-56 w-full" />
+                      <div className="absolute bottom-2 left-2 right-2 px-3 py-1.5 rounded bg-black/80 backdrop-blur border border-white/10 flex items-center justify-between text-[11px] text-white">
+                        <span className="truncate max-w-[180px] font-mono">{imageFile?.name}</span>
+                        <span className="text-clinical-400 font-mono">{(imageFile?.size / 1024).toFixed(1)} KB</span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                      className="w-full py-1.5 rounded-lg border border-clinical-800 hover:border-blood-700 text-xs text-clinical-300 hover:text-white transition font-medium flex items-center justify-center gap-1.5">
+                      <i data-lucide="refresh-cw" className="w-3 h-3"></i> Replace Image
+                    </button>
+                    <input 
+                      ref={fileInputRef} 
+                      type="file" 
+                      accept="image/jpeg,image/png,image/webp" 
+                      onChange={e => handleFile(e.target.files[0])} 
+                      className="hidden" 
+                    />
+                  </div>
+                )}
+                <p className="text-[10px] text-clinical-600 text-center font-mono">
+                  All image analysis runs 100% locally in your browser.
+                </p>
+              </div>
+
+              {/* Condition Picker */}
+              <div className="glow-card p-5 rounded-xl space-y-3">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <i data-lucide="layers" className="w-4 h-4 text-blood-400"></i>
+                  2. Select Target Condition for Demo
+                </h3>
+
+                <div className="space-y-2">
+                  <select
+                    value={selectedDisease ? selectedDisease.id : ''}
+                    onChange={e => {
+                      const d = DISEASES.find(x => x.id === e.target.value);
+                      if (d) onSelectDisease(d);
+                    }}
+                    className="w-full bg-clinical-950/90 border border-blood-900/60 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blood-500"
+                  >
+                    <option value="" disabled>-- Choose a condition from database --</option>
+                    {DISEASES.map(d => (
+                      <option key={d.id} value={d.id}>{d.name} ({d.category})</option>
+                    ))}
+                  </select>
+
+                  {selectedDisease && (
+                    <div className="p-3 rounded-lg bg-clinical-950/80 border border-blood-950 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-white">{selectedDisease.name}</span>
+                        <RiskBadge level={selectedDisease.riskLevel} />
+                      </div>
+                      <p className="text-[11px] text-clinical-400 line-clamp-2">{selectedDisease.description}</p>
+                      <div className="text-[10px] text-clinical-500 font-mono">
+                        Category: {selectedDisease.category} · ICD: {selectedDisease.icdCode}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Big Launch Button */}
+                <button
+                  disabled={isAnalyzing || !selectedDisease}
+                  onClick={runPipeline}
+                  className={`w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 transition shadow-lg ${
+                    isAnalyzing || !selectedDisease
+                      ? 'bg-clinical-900 text-clinical-600 border border-clinical-800 cursor-not-allowed'
+                      : 'bg-blood-600 hover:bg-blood-500 text-white shadow-[0_0_25px_rgba(220,38,38,0.55)] cursor-pointer'
+                  }`}
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <i data-lucide="loader-2" className="w-4 h-4 animate-spin"></i>
+                      Hierarchical Agents Executing...
+                    </>
+                  ) : (
+                    <>
+                      <i data-lucide="play" className="w-4 h-4 fill-current"></i>
+                      Launch Hierarchical Agent Analysis
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column: Visual Hierarchical Agent Pipeline */}
+            <div className="lg:col-span-7 glow-card p-6 rounded-xl space-y-5">
+              <div className="flex items-center justify-between border-b border-blood-950 pb-3">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <i data-lucide="git-merge" className="w-4 h-4 text-blood-400"></i>
+                    Hierarchical Multi-Agent Execution Flow
+                  </h3>
+                  <p className="text-xs text-clinical-400">Supervisor coordinates specialized sub-agents sequentially</p>
+                </div>
+                <span className="text-xs font-mono px-2.5 py-1 rounded bg-blood-950/80 border border-blood-800 text-blood-400">
+                  {completedAgents.length} / {AGENTS.length} Complete
+                </span>
+              </div>
+
+              {/* Step-by-Step Hierarchical Agent Nodes */}
+              <div className="space-y-3 relative">
+                {AGENTS.map((agent, idx) => {
+                  const isCurrent = currentAgentIdx === idx && isAnalyzing;
+                  const isDone = completedAgents.includes(agent.id);
+                  const logMsg = agentLogs[agent.id];
+
+                  return (
+                    <div 
+                      key={agent.id}
+                      className={`p-3.5 rounded-xl border transition-all duration-300 relative ${
+                        isCurrent 
+                          ? 'active-agent-glow' 
+                          : isDone 
+                            ? 'completed-agent-glow' 
+                            : 'bg-clinical-950/50 border-clinical-900/60 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                            isCurrent 
+                              ? 'bg-blood-600 text-white animate-pulse' 
+                              : isDone 
+                                ? 'bg-emerald-900/60 border border-emerald-600 text-emerald-300' 
+                                : 'bg-clinical-900 border border-clinical-800 text-clinical-500'
+                          }`}>
+                            <i data-lucide={agent.icon} className="w-4 h-4"></i>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold font-mono text-white">{agent.shortName}</span>
+                              <span className="text-[10px] text-clinical-500">Level {agent.level}</span>
+                              {agent.level === 0 && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blood-950 text-blood-300 border border-blood-700">
+                                  MASTER
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-clinical-300">{agent.role}</div>
+                          </div>
+                        </div>
+
+                        {/* Status Indicator */}
+                        <div>
+                          {isCurrent && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-red-950 border border-red-600 text-red-300 animate-pulse">
+                              RUNNING
+                            </span>
+                          )}
+                          {isDone && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950 border border-emerald-600 text-emerald-300 flex items-center gap-1">
+                              <i data-lucide="check" className="w-3 h-3"></i> DONE
+                            </span>
+                          )}
+                          {!isCurrent && !isDone && (
+                            <span className="text-[10px] font-mono text-clinical-600">WAITING</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Log Output if available */}
+                      {logMsg && (
+                        <div className="mt-2.5 pt-2 border-t border-white/10 text-[11px] font-mono text-clinical-300 flex items-start gap-1.5">
+                          <span className="text-blood-400 font-bold">›</span>
+                          <span>{logMsg}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Progress completion prompt */}
+              {completedAgents.length === AGENTS.length && (
+                <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-600/50 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 text-xs text-emerald-300">
+                    <i data-lucide="check-circle-2" className="w-5 h-5 text-emerald-400"></i>
+                    <span>All 8 agents have completed processing successfully!</span>
+                  </div>
+                  <button
+                    onClick={() => onNavigate('report')}
+                    className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition">
+                    View Full Report <i data-lucide="arrow-right" className="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 5. SUPERVISOR CONTROL (Hierarchical Agent Tree Page)
+    function SupervisorControl() {
+      useLucide();
+      const supervisor = AGENTS.find(a => a.level === 0);
+      const level1Agents = AGENTS.filter(a => a.level === 1);
+      const level2Agents = AGENTS.filter(a => a.level === 2);
+      const level3Agents = AGENTS.filter(a => a.level === 3);
+      const level4Agents = AGENTS.filter(a => a.level === 4);
+
+      return (
+        <div className="p-6 max-w-7xl mx-auto space-y-6">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-black text-white">Supervisor Control & Architecture Tree</h2>
+              <span className="px-2.5 py-0.5 text-xs font-mono font-bold bg-blood-950 border border-blood-700 text-blood-400 rounded">
+                TOP-DOWN DISPATCH
+              </span>
+            </div>
+            <p className="text-xs text-clinical-400 mt-1">Hierarchical tree representation showing single-supervisor orchestration of subordinate agents</p>
+          </div>
+
+          <DisclaimerBanner />
+
+          {/* Interactive Agent Hierarchy Diagram */}
+          <div className="glow-card p-8 rounded-2xl border border-blood-800/40 space-y-8 flex flex-col items-center">
+            {/* Level 0: Supervisor */}
+            <div className="w-full max-w-md text-center">
+              <div className="p-5 rounded-2xl bg-gradient-to-b from-blood-900/60 to-blood-950/80 border-2 border-blood-500 shadow-[0_0_30px_rgba(220,38,38,0.4)] space-y-2">
+                <div className="w-10 h-10 mx-auto rounded-xl bg-blood-600 flex items-center justify-center text-white shadow-md">
+                  <i data-lucide="crown" className="w-5 h-5"></i>
+                </div>
+                <h3 className="text-base font-black text-white">{supervisor.name}</h3>
+                <p className="text-xs text-rose-200 font-mono uppercase tracking-wider">{supervisor.role}</p>
+                <div className="text-[11px] text-clinical-300 pt-1">
+                  Orchestrates workflow, dispatches parallel sub-tasks, aggregates sub-agent telemetry.
+                </div>
+              </div>
+            </div>
+
+            {/* Tree Branch Connector */}
+            <div className="w-px h-8 bg-gradient-to-b from-blood-500 to-blood-800"></div>
+
+            {/* Level 1: Parallel Analysis Layer */}
+            <div className="w-full space-y-3">
+              <div className="text-center">
+                <span className="px-3 py-1 rounded-full bg-blood-950/90 border border-blood-800 text-[11px] font-mono font-bold text-blood-300 uppercase tracking-widest">
+                  Level 1 · Parallel Diagnostic Layer (Dispatched by Supervisor)
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {level1Agents.map(agent => (
+                  <div key={agent.id} className="p-4 rounded-xl bg-clinical-950/90 border border-blood-900/50 hover:border-blood-600/70 transition space-y-2 text-center">
+                    <div className="w-8 h-8 mx-auto rounded-lg bg-blood-950 border border-blood-800 flex items-center justify-center text-blood-400">
+                      <i data-lucide={agent.icon} className="w-4 h-4"></i>
+                    </div>
+                    <div className="font-mono font-bold text-xs text-white">{agent.shortName}</div>
+                    <div className="text-[11px] text-clinical-300 font-medium">{agent.name}</div>
+                    <div className="text-[10px] text-clinical-500 leading-tight">{agent.role}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Connector */}
+            <div className="w-px h-8 bg-gradient-to-b from-blood-800 to-blood-600"></div>
+
+            {/* Level 2: Medicine Reference */}
+            <div className="w-full max-w-md text-center space-y-2">
+              <span className="px-3 py-1 rounded-full bg-blood-950/90 border border-blood-800 text-[11px] font-mono font-bold text-blood-300 uppercase tracking-widest">
+                Level 2 · Pharmacological Reference Compiler
+              </span>
+              {level2Agents.map(agent => (
+                <div key={agent.id} className="p-4 rounded-xl bg-clinical-950/90 border border-blood-800/60 text-center space-y-1.5">
+                  <div className="w-8 h-8 mx-auto rounded-lg bg-blood-950 border border-blood-800 flex items-center justify-center text-amber-400">
+                    <i data-lucide={agent.icon} className="w-4 h-4"></i>
+                  </div>
+                  <div className="font-mono font-bold text-xs text-white">{agent.name}</div>
+                  <div className="text-[11px] text-clinical-300">{agent.role}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Connector */}
+            <div className="w-px h-8 bg-gradient-to-b from-blood-600 to-blood-500"></div>
+
+            {/* Level 3: Recommendation */}
+            <div className="w-full max-w-md text-center space-y-2">
+              <span className="px-3 py-1 rounded-full bg-blood-950/90 border border-blood-800 text-[11px] font-mono font-bold text-blood-300 uppercase tracking-widest">
+                Level 3 · Clinical Guidance Synthesizer
+              </span>
+              {level3Agents.map(agent => (
+                <div key={agent.id} className="p-4 rounded-xl bg-clinical-950/90 border border-blood-800/60 text-center space-y-1.5">
+                  <div className="w-8 h-8 mx-auto rounded-lg bg-blood-950 border border-blood-800 flex items-center justify-center text-emerald-400">
+                    <i data-lucide={agent.icon} className="w-4 h-4"></i>
+                  </div>
+                  <div className="font-mono font-bold text-xs text-white">{agent.name}</div>
+                  <div className="text-[11px] text-clinical-300">{agent.role}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Connector */}
+            <div className="w-px h-8 bg-gradient-to-b from-blood-500 to-emerald-500"></div>
+
+            {/* Level 4: Final Report */}
+            <div className="w-full max-w-md text-center space-y-2">
+              <span className="px-3 py-1 rounded-full bg-emerald-950/90 border border-emerald-700 text-[11px] font-mono font-bold text-emerald-300 uppercase tracking-widest">
+                Level 4 · Final Synthesis & Report Output
+              </span>
+              {level4Agents.map(agent => (
+                <div key={agent.id} className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-600/70 text-center space-y-1.5 shadow-[0_0_20px_rgba(22,163,74,0.25)]">
+                  <div className="w-8 h-8 mx-auto rounded-lg bg-emerald-950 border border-emerald-600 flex items-center justify-center text-emerald-400">
+                    <i data-lucide={agent.icon} className="w-4 h-4"></i>
+                  </div>
+                  <div className="font-mono font-bold text-xs text-white">{agent.name}</div>
+                  <div className="text-[11px] text-emerald-200">{agent.role}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 6. ANALYSIS REPORT PAGE
+    function AnalysisReport({ report, onNavigate }) {
+      useLucide();
+
+      if (!report) {
+        return (
+          <div className="p-12 max-w-2xl mx-auto text-center space-y-4">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-blood-950/80 border border-blood-800 flex items-center justify-center text-blood-400">
+              <i data-lucide="file-question" className="w-8 h-8"></i>
+            </div>
+            <h2 className="text-xl font-bold text-white">No Analysis Report Generated Yet</h2>
+            <p className="text-xs text-clinical-400">
+              Run an image analysis through the Hierarchical Multi-Agent workflow to generate your clinical intelligence summary.
+            </p>
+            <button
+              onClick={() => onNavigate('analysis')}
+              className="px-6 py-2.5 rounded-xl bg-blood-600 hover:bg-blood-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(220,38,38,0.4)] transition">
+              Go to Image Analysis
+            </button>
+          </div>
+        );
+      }
+
+      const { disease, imageName, imageSize, imagePreview, confidence, timestamp, agentLogs } = report;
+      const relatedMeds = (disease.medicineIds || []).map(id => MEDICINES[id]).filter(Boolean);
+      const riskCfg = RISK_CONFIG[disease.riskLevel] || RISK_CONFIG.low;
+
+      return (
+        <div className="p-6 max-w-6xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-blood-950 pb-4">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-2xl font-black text-white">Clinical Intelligence Report</h2>
+                <span className="px-2.5 py-0.5 text-xs font-mono font-bold bg-blood-950 border border-blood-700 text-blood-300 rounded">
+                  DEMO AI RESULT
+                </span>
+              </div>
+              <div className="text-xs text-clinical-400 mt-1 font-mono">
+                Generated on {timestamp} · Source: {imageName} ({imageSize})
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => window.print()} 
+                className="px-4 py-2 rounded-lg bg-clinical-900 border border-clinical-800 hover:border-blood-800 text-xs font-medium text-clinical-200 flex items-center gap-1.5 transition">
+                <i data-lucide="printer" className="w-3.5 h-3.5"></i> Print Report
+              </button>
+              <button 
+                onClick={() => onNavigate('analysis')} 
+                className="px-4 py-2 rounded-lg bg-blood-600 hover:bg-blood-500 text-xs font-bold text-white flex items-center gap-1.5 transition">
+                <i data-lucide="refresh-cw" className="w-3.5 h-3.5"></i> New Analysis
+              </button>
+            </div>
+          </div>
+
+          <DisclaimerBanner full={true} />
+
+          {/* Condition Overview & Circular Risk Score */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+            {/* Condition Info */}
+            <div className="md:col-span-8 glow-card p-6 rounded-xl space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-blood-400 font-bold">Identified Condition</span>
+                  <h3 className="text-2xl font-black text-white">{disease.name}</h3>
+                  <div className="text-xs text-clinical-400 font-mono">Category: {disease.category} · ICD-10 Code: {disease.icdCode}</div>
+                </div>
+                <RiskBadge level={disease.riskLevel} />
+              </div>
+
+              <p className="text-xs text-clinical-300 leading-relaxed border-t border-clinical-900 pt-3">
+                {disease.description}
+              </p>
+
+              {/* Uploaded Image Preview Thumbnail */}
+              {imagePreview && (
+                <div className="pt-2 flex items-center gap-3">
+                  <img src={imagePreview} alt="Target" className="w-16 h-16 rounded-lg object-cover border border-blood-800" />
+                  <div className="text-xs">
+                    <div className="font-bold text-clinical-200">Visual Input Evaluated</div>
+                    <div className="text-clinical-500 font-mono text-[11px]">{imageName} · Format Verified</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Confidence & Risk Score Dial */}
+            <div className="md:col-span-4 glow-card p-6 rounded-xl text-center flex flex-col items-center justify-center space-y-2">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-clinical-500">Pattern Match Confidence</span>
+              <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-rose-400 font-mono">
+                {confidence}%
+              </div>
+              <div className="w-full bg-clinical-900 h-2 rounded-full overflow-hidden mt-1">
+                <div className="bg-blood-500 h-full rounded-full" style={{ width: `${confidence}%` }}></div>
+              </div>
+
+              <div className="pt-3 border-t border-clinical-900 w-full">
+                <span className="text-[10px] font-mono text-clinical-500 uppercase">Risk Quantification</span>
+                <div className="text-xl font-bold mt-0.5" style={{ color: riskCfg.color }}>
+                  {riskCfg.label} ({riskCfg.score}/100)
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Warning Signs & Symptoms */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Warning Signs Alert Box */}
+            <div className="p-5 rounded-xl bg-red-950/40 border border-red-700/60 space-y-2 text-red-200">
+              <h4 className="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-2 font-mono">
+                <i data-lucide="alert-octagon" className="w-4 h-4 text-red-400"></i> Warning Signs — Seek Medical Attention
+              </h4>
+              <ul className="list-disc list-inside space-y-1 text-xs text-red-200/90">
+                {disease.warningSigns.map((w, idx) => (
+                  <li key={idx}>{w}</li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Symptom Cluster */}
+            <div className="glow-card p-5 rounded-xl space-y-2">
+              <h4 className="text-xs font-bold text-rose-400 uppercase tracking-wider font-mono">
+                Correlated Symptom Profile
+              </h4>
+              <div className="flex flex-wrap gap-1.5">
+                {disease.symptoms.map((sx, idx) => (
+                  <span key={idx} className="px-2.5 py-1 rounded bg-clinical-950 border border-clinical-800 text-clinical-300 text-xs">
+                    • {sx}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* General Care & Self-Management */}
+          <div className="glow-card p-6 rounded-xl space-y-3">
+            <h4 className="text-sm font-bold text-emerald-400 uppercase tracking-wider font-mono flex items-center gap-2">
+              <i data-lucide="check-circle" className="w-4 h-4 text-emerald-400"></i> General Self-Care & Lifestyle Recommendations
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-clinical-300">
+              {disease.generalCare.map((gc, idx) => (
+                <div key={idx} className="p-3 rounded-lg bg-clinical-950 border border-clinical-800 flex items-start gap-2">
+                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span>{gc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Medicine References */}
+          {relatedMeds.length > 0 && (
+            <div className="glow-card p-6 rounded-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <i data-lucide="pill" className="w-4 h-4 text-amber-400"></i>
+                    Educational Medicine References ({relatedMeds.length})
+                  </h4>
+                  <p className="text-xs text-amber-400/80 mt-0.5">
+                    General educational information. Medicine selection and dosage must be confirmed by a qualified healthcare professional.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {relatedMeds.map(m => (
+                  <div key={m.id} className="p-4 rounded-xl bg-clinical-950 border border-blood-950 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-bold text-sm text-white">{m.name}</h5>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-clinical-900 text-clinical-400">
+                        {m.genericName}
+                      </span>
+                    </div>
+                    <div className="text-xs text-clinical-400">{m.purpose}</div>
+                    <div className="text-[11px] text-clinical-300">
+                      <strong>Form & Strengths:</strong> {m.form} ({m.commonStrengths.join(', ')})
+                    </div>
+                    <div className="text-[11px] text-amber-400/90 font-medium">
+                      <strong>Ref. Frequency:</strong> {m.referenceFrequency}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Agent Execution Timeline Summary */}
+          <div className="glow-card p-5 rounded-xl space-y-3">
+            <h4 className="text-xs font-mono font-bold text-clinical-400 uppercase tracking-wider">
+              Agent Execution Audit Trace
+            </h4>
+            <div className="space-y-1.5">
+              {AGENTS.map(agent => (
+                <div key={agent.id} className="flex items-center justify-between text-xs py-1.5 border-b border-clinical-900/60 last:border-0">
+                  <span className="font-mono text-clinical-300 flex items-center gap-2">
+                    <span className="text-emerald-400">✔</span> {agent.name} ({agent.shortName})
+                  </span>
+                  <span className="text-clinical-500 font-mono text-[11px] max-w-md truncate">
+                    {agentLogs ? agentLogs[agent.id] : 'Completed successfully.'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 7. ANALYTICS PAGE (Chart.js Native Canvas Render)
+    function Analytics() {
+      useLucide();
+      const chartRef1 = useRef(null);
+      const chartRef2 = useRef(null);
+
+      useEffect(() => {
+        let chart1Instance = null;
+        let chart2Instance = null;
+
+        // Category count dataset
+        const catLabels = DISEASE_CATEGORIES;
+        const catCounts = DISEASE_CATEGORIES.map(c => DISEASES.filter(d => d.category === c).length);
+
+        if (chartRef1.current) {
+          chart1Instance = new Chart(chartRef1.current, {
+            type: 'bar',
+            data: {
+              labels: catLabels,
+              datasets: [{
+                label: 'Conditions',
+                data: catCounts,
+                backgroundColor: '#dc2626',
+                borderRadius: 6
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { ticks: { color: '#a3a3a3', font: { size: 10 } }, grid: { display: false } },
+                y: { ticks: { color: '#a3a3a3', stepSize: 1 }, grid: { color: '#1f1f1f' } }
+              }
+            }
+          });
+        }
+
+        // Risk distribution dataset
+        const riskCounts = [
+          DISEASES.filter(d => d.riskLevel === 'critical').length,
+          DISEASES.filter(d => d.riskLevel === 'high').length,
+          DISEASES.filter(d => d.riskLevel === 'medium').length,
+          DISEASES.filter(d => d.riskLevel === 'low').length,
+        ];
+
+        if (chartRef2.current) {
+          chart2Instance = new Chart(chartRef2.current, {
+            type: 'doughnut',
+            data: {
+              labels: ['Critical Risk', 'High Risk', 'Medium Risk', 'Low Risk'],
+              datasets: [{
+                data: riskCounts,
+                backgroundColor: ['#dc2626', '#f97316', '#eab308', '#22c55e'],
+                borderColor: '#0a0a0a',
+                borderWidth: 2
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: 'bottom', labels: { color: '#d4d4d4', boxWidth: 12 } }
+              }
+            }
+          });
+        }
+
+        return () => {
+          if (chart1Instance) chart1Instance.destroy();
+          if (chart2Instance) chart2Instance.destroy();
+        };
+      }, []);
+
+      return (
+        <div className="p-6 max-w-7xl mx-auto space-y-6">
+          <div>
+            <h2 className="text-2xl font-black text-white">System Analytics & Distribution</h2>
+            <p className="text-xs text-clinical-400 mt-1">Medical intelligence database statistics and risk stratification metrics</p>
+          </div>
+
+          <DisclaimerBanner />
+
+          {/* Stat Counter Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="glow-card p-5 rounded-xl text-center">
+              <div className="text-3xl font-black text-red-400">{DISEASES.length}</div>
+              <div className="text-xs text-clinical-400 mt-1">Total Diseases</div>
+            </div>
+            <div className="glow-card p-5 rounded-xl text-center">
+              <div className="text-3xl font-black text-amber-400">{Object.keys(MEDICINES).length}</div>
+              <div className="text-xs text-clinical-400 mt-1">Medicines Indexed</div>
+            </div>
+            <div className="glow-card p-5 rounded-xl text-center">
+              <div className="text-3xl font-black text-rose-400">{DISEASE_CATEGORIES.length}</div>
+              <div className="text-xs text-clinical-400 mt-1">Medical Domains</div>
+            </div>
+            <div className="glow-card p-5 rounded-xl text-center">
+              <div className="text-3xl font-black text-emerald-400">{AGENTS.length}</div>
+              <div className="text-xs text-clinical-400 mt-1">Hierarchical Agents</div>
+            </div>
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Category Distribution */}
+            <div className="glow-card p-6 rounded-xl space-y-4">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="bar-chart-3" className="w-4 h-4 text-blood-400"></i>
+                Disease Distribution by Medical Category
+              </h3>
+              <div className="h-64">
+                <canvas ref={chartRef1}></canvas>
+              </div>
+            </div>
+
+            {/* Risk Level Distribution */}
+            <div className="glow-card p-6 rounded-xl space-y-4">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="pie-chart" className="w-4 h-4 text-blood-400"></i>
+                Risk Stratification Breakdown
+              </h3>
+              <div className="h-64">
+                <canvas ref={chartRef2}></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- MAIN APP CONTAINER WITH SIDEBAR & ROUTING ---
+    function App() {
+      useLucide();
+      const [currentPage, setCurrentPage] = useState('command');
+      const [selectedDisease, setSelectedDisease] = useState(DISEASES[0]); // Default to Type 2 Diabetes
+      const [analysisReport, setAnalysisReport] = useState(null);
+
+      const navItems = [
+        { id: 'command', label: 'Command Center', icon: 'layout-dashboard' },
+        { id: 'disease', label: 'Disease Intel', icon: 'brain' },
+        { id: 'medicine', label: 'Medicine Vault', icon: 'pill' },
+        { id: 'analysis', label: 'Image Analysis', icon: 'scan-eye', badge: 'DEMO' },
+        { id: 'supervisor', label: 'Supervisor Control', icon: 'network' },
+        { id: 'report', label: 'Analysis Report', icon: 'file-text' },
+        { id: 'analytics', label: 'Analytics', icon: 'bar-chart-3' }
+      ];
+
+      return (
+        <div className="flex min-h-screen bg-[#0a0a0a]">
+          {/* Left Sidebar */}
+          <aside className="w-60 bg-[#0f0508] border-r border-blood-900/30 flex flex-col justify-between flex-shrink-0 z-30">
+            <div>
+              {/* Logo */}
+              <div className="p-5 border-b border-blood-900/30 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blood-700 to-blood-500 flex items-center justify-center text-white shadow-[0_0_12px_rgba(220,38,38,0.5)]">
+                  <i data-lucide="activity" className="w-5 h-5"></i>
+                </div>
+                <div>
+                  <div className="text-xs font-black text-white tracking-wider">MED-HMAS</div>
+                  <div className="text-[9px] font-mono text-blood-400">HIERARCHICAL V2.0</div>
+                </div>
+              </div>
+
+              {/* Status Pill */}
+              <div className="mx-3 my-3 px-3 py-2 rounded-lg bg-blood-950/40 border border-blood-900/40">
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400 font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  ALL 8 AGENTS READY
+                </div>
+                <div className="text-[9px] text-clinical-500 font-mono mt-0.5">SUPERVISOR: ACTIVE</div>
+              </div>
+
+              {/* Navigation Items */}
+              <nav className="p-3 space-y-1">
+                {navItems.map(item => {
+                  const isActive = currentPage === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setCurrentPage(item.id)}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition ${
+                        isActive
+                          ? 'bg-blood-900/40 border border-blood-700/60 text-blood-300 shadow-[0_0_10px_rgba(220,38,38,0.2)]'
+                          : 'text-clinical-400 hover:text-white hover:bg-clinical-950'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <i data-lucide={item.icon} className={`w-4 h-4 ${isActive ? 'text-blood-400' : 'text-clinical-500'}`}></i>
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && (
+                        <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold bg-blood-600 text-white rounded">
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+
+            {/* Sidebar Footer */}
+            <div className="p-3 border-t border-blood-900/30">
+              <div className="p-2.5 rounded-lg bg-blood-950/60 border border-blood-900/40 text-[9px] text-clinical-400 leading-tight">
+                Standalone Browser Edition · No Server Required
+              </div>
+            </div>
+          </aside>
+
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Topbar */}
+            <header className="h-14 border-b border-blood-900/30 bg-[#0f0508]/80 backdrop-blur px-6 flex items-center justify-between z-20">
+              <div className="flex items-center gap-2 text-xs font-mono text-clinical-400">
+                <span>SYSTEM:</span>
+                <span className="text-white font-bold uppercase">{currentPage}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="hidden sm:inline-flex px-3 py-1 rounded-full bg-blood-950 border border-blood-900 text-blood-400 text-[10px] font-mono font-bold">
+                  LOCAL DEMO AI · ZERO CLOUD ML
+                </span>
+                <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-mono font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  STANDALONE
+                </div>
+              </div>
+            </header>
+
+            {/* Dynamic Page Router */}
+            <main className="flex-1 overflow-y-auto">
+              {currentPage === 'command' && (
+                <CommandCenter 
+                  onNavigate={setCurrentPage} 
+                  onSelectDiseaseForAnalysis={setSelectedDisease} 
+                />
+              )}
+              {currentPage === 'disease' && (
+                <DiseaseIntelligence 
+                  onSelectDiseaseForAnalysis={setSelectedDisease}
+                  onNavigate={setCurrentPage}
+                />
+              )}
+              {currentPage === 'medicine' && (
+                <MedicineVault onNavigate={setCurrentPage} />
+              )}
+              {currentPage === 'analysis' && (
+                <ImageAnalysis 
+                  selectedDisease={selectedDisease}
+                  onSelectDisease={setSelectedDisease}
+                  onAnalysisComplete={(res) => {
+                    setAnalysisReport(res);
+                    setCurrentPage('report');
+                  }}
+                  onNavigate={setCurrentPage}
+                />
+              )}
+              {currentPage === 'supervisor' && (
+                <SupervisorControl />
+              )}
+              {currentPage === 'report' && (
+                <AnalysisReport 
+                  report={analysisReport} 
+                  onNavigate={setCurrentPage} 
+                />
+              )}
+              {currentPage === 'analytics' && (
+                <Analytics />
+              )}
+            </main>
+
+            {/* Global Disclaimer Footer Bar */}
+            <footer className="py-2.5 px-6 border-t border-blood-900/30 bg-[#0a0a0a] text-[10px] text-clinical-500 text-center">
+              Educational healthcare demonstration only. This application does not provide confirmed medical diagnosis or personalized prescriptions. Medicine and dosage information is for general educational reference only. Consult a qualified healthcare professional.
+            </footer>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decentralized Multi-Agent Architecture | Agentic AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: #1a2236;
+            --accent-primary: #10b981;
+            --accent-secondary: #34d399;
+            --accent-glow: rgba(16, 185, 129, 0.3);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: rgba(16, 185, 129, 0.15);
+            --gradient-1: linear-gradient(135deg, #10b981, #06b6d4, #34d399);
+            --gradient-2: linear-gradient(135deg, #064e3b, #065f46);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                radial-gradient(rgba(16, 185, 129, 0.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 2rem; position: relative; z-index: 1; }
+
+        /* Hero */
+        .hero {
+            padding: 5rem 0 4rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            z-index: -1;
+            opacity: 0.4;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1.5rem;
+        }
+
+        .badge::before { content: '🌐'; }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.15;
+            margin-bottom: 1.25rem;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            max-width: 720px;
+            margin: 0 auto 2rem;
+            font-weight: 400;
+        }
+
+        .meta-bar {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Sections */
+        section { margin-bottom: 3.5rem; }
+
+        h2 {
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        h2 .icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px; height: 42px;
+            background: rgba(16, 185, 129, 0.12);
+            border-radius: 12px;
+            font-size: 1.25rem;
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent-secondary);
+            margin: 1.5rem 0 0.75rem;
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--gradient-1);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(16, 185, 129, 0.35);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(16, 185, 129, 0.1);
+        }
+
+        .card:hover::before { opacity: 1; }
+
+        /* Mesh Diagram */
+        .diagram-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .diagram-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+
+        .mesh-diagram {
+            position: relative;
+            width: 500px;
+            height: 420px;
+            margin: 0 auto;
+        }
+
+        .mesh-node {
+            position: absolute;
+            width: 110px;
+            padding: 0.7rem 0.5rem;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 0.78rem;
+            text-align: center;
+            z-index: 2;
+        }
+
+        .mesh-node.n1 { top: 10px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #10b981, #06b6d4); color: white; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4); }
+        .mesh-node.n2 { top: 120px; left: 5%; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #6ee7b7; }
+        .mesh-node.n3 { top: 120px; right: 5%; background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.3); color: #67e8f9; }
+        .mesh-node.n4 { top: 260px; left: 0%; background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.25); color: #fde68a; }
+        .mesh-node.n5 { top: 260px; right: 0%; background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.25); color: #c4b5fd; }
+        .mesh-node.n6 { bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(244, 63, 94, 0.12); border: 1px solid rgba(244, 63, 94, 0.25); color: #fda4af; }
+
+        .mesh-svg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        .mesh-svg line {
+            stroke: rgba(16, 185, 129, 0.15);
+            stroke-width: 1.5;
+            stroke-dasharray: 6,4;
+        }
+
+        /* Feature Grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+            margin: 1.5rem 0;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(16, 185, 129, 0.35);
+            transform: translateY(-2px);
+        }
+
+        .feature-icon {
+            width: 44px; height: 44px;
+            background: rgba(16, 185, 129, 0.12);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .feature-card p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        /* Pros/Cons */
+        .pros-cons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        @media (max-width: 768px) { .pros-cons { grid-template-columns: 1fr; } }
+
+        .pros-card, .cons-card { border-radius: 14px; padding: 1.75rem; }
+        .pros-card { background: rgba(52, 211, 153, 0.05); border: 1px solid rgba(52, 211, 153, 0.15); }
+        .cons-card { background: rgba(248, 113, 113, 0.05); border: 1px solid rgba(248, 113, 113, 0.15); }
+        .pros-card h4 { color: #6ee7b7; margin-bottom: 1rem; font-size: 1rem; }
+        .cons-card h4 { color: #fca5a5; margin-bottom: 1rem; font-size: 1rem; }
+
+        .list-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            margin-bottom: 0.6rem;
+            font-size: 0.92rem;
+            color: var(--text-secondary);
+        }
+
+        .list-item .check { color: var(--success); font-weight: bold; flex-shrink: 0; }
+        .list-item .cross { color: var(--danger); font-weight: bold; flex-shrink: 0; }
+
+        /* Protocol Cards */
+        .protocol-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.25rem;
+            margin: 1.5rem 0;
+        }
+
+        .protocol-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .protocol-card:hover {
+            border-color: rgba(16, 185, 129, 0.35);
+        }
+
+        .protocol-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--accent-secondary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .protocol-card p { font-size: 0.88rem; color: var(--text-muted); margin: 0; }
+
+        /* Code Block */
+        .code-block {
+            background: #0d1117;
+            border: 1px solid rgba(16, 185, 129, 0.15);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 1.5rem 0;
+        }
+
+        .code-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            background: rgba(16, 185, 129, 0.08);
+            border-bottom: 1px solid rgba(16, 185, 129, 0.1);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .code-dots { display: flex; gap: 6px; }
+        .code-dots span { width: 10px; height: 10px; border-radius: 50%; }
+        .code-dots span:nth-child(1) { background: #f87171; }
+        .code-dots span:nth-child(2) { background: #fbbf24; }
+        .code-dots span:nth-child(3) { background: #34d399; }
+
+        .code-content {
+            padding: 1.25rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            line-height: 1.8;
+            overflow-x: auto;
+            color: #e2e8f0;
+        }
+
+        .code-content .keyword { color: #c084fc; }
+        .code-content .function { color: #67e8f9; }
+        .code-content .string { color: #86efac; }
+        .code-content .comment { color: #64748b; font-style: italic; }
+        .code-content .class-name { color: #fbbf24; }
+        .code-content .param { color: #fb923c; }
+
+        /* Table */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+
+        th {
+            background: rgba(16, 185, 129, 0.1);
+            padding: 1rem 1.25rem;
+            text-align: left;
+            font-weight: 700;
+            color: var(--accent-secondary);
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        td {
+            padding: 0.9rem 1.25rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        tr:hover td { background: rgba(16, 185, 129, 0.03); }
+
+        /* Use Case */
+        .use-case {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.25rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .use-case:hover { border-color: rgba(16, 185, 129, 0.3); }
+
+        .use-case-icon {
+            width: 40px; height: 40px;
+            background: rgba(16, 185, 129, 0.12);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .use-case h4 { font-size: 0.95rem; margin-bottom: 0.3rem; color: var(--text-primary); }
+        .use-case p { font-size: 0.87rem; color: var(--text-muted); margin: 0; }
+
+        /* Flow Steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+
+        .flow-steps::before {
+            content: '';
+            position: absolute;
+            left: 24px;
+            top: 48px;
+            bottom: 24px;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--accent-primary), rgba(16, 185, 129, 0.1));
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.25rem;
+            padding: 1rem 1.25rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .step-number {
+            width: 48px; height: 48px;
+            background: var(--gradient-1);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: white;
+            flex-shrink: 0;
+            z-index: 1;
+        }
+
+        .step-content h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; }
+        .step-content p { font-size: 0.9rem; color: var(--text-muted); margin: 0; }
+
+        /* Highlight Box */
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(6, 182, 212, 0.08));
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 14px;
+            padding: 1.75rem;
+            margin: 1.5rem 0;
+        }
+
+        .highlight-box h4 {
+            color: var(--accent-secondary);
+            font-size: 1.05rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 3rem 0;
+            border-top: 1px solid var(--border);
+            margin-top: 2rem;
+        }
+
+        footer p { color: var(--text-muted); font-size: 0.85rem; }
+
+        /* Print */
+        @media print {
+            body { background: white; color: #1a1a1a; }
+            body::before { display: none; }
+            .hero::after { display: none; }
+            h1 { -webkit-text-fill-color: #059669; background: none; }
+            .card, .feature-card, .use-case, .flow-step, .diagram-container {
+                border: 1px solid #ddd;
+                box-shadow: none;
+                break-inside: avoid;
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.2rem; }
+            .container { padding: 0 1.25rem; }
+            .mesh-diagram { width: 100%; height: auto; min-height: 350px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Hero -->
+        <header class="hero">
+            <div class="badge">Multi-Agent Architecture — Module 2 of 3</div>
+            <h1>Decentralized<br>Multi-Agent Architecture</h1>
+            <p class="subtitle">A peer-to-peer approach where autonomous agents communicate directly through a shared mesh, with no central controller — enabling emergent, self-organizing behavior.</p>
+            <div class="meta-bar">
+                <span class="meta-item">📚 Agentic AI — Credit Course</span>
+                <span class="meta-item">⏱️ Estimated Read: 15 min</span>
+                <span class="meta-item">🌐 Architecture Pattern</span>
+            </div>
+        </header>
+
+        <!-- 1. Introduction -->
+        <section>
+            <h2><span class="icon">📖</span> 1. Introduction</h2>
+            <div class="card">
+                <p>The <strong>Decentralized Multi-Agent Architecture</strong> eliminates the single orchestrator. Instead, every agent is an <em>autonomous peer</em> — capable of initiating conversations, requesting help, and negotiating task ownership with other agents. There is no boss; there is a <em>community</em>.</p>
+                <p>Inspired by biological swarms (ant colonies, bee hives) and distributed computing protocols (gossip protocols, blockchain consensus), this pattern enables emergent intelligence that arises from local interactions rather than top-down control.</p>
+                <div class="highlight-box">
+                    <h4>💡 Core Principle</h4>
+                    <p style="margin:0;"><strong>No single point of control.</strong> Each agent independently perceives its environment, makes decisions based on local knowledge, and coordinates with peers via message passing. Global behavior <em>emerges</em> from these local interactions.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Architecture Diagram -->
+        <section>
+            <h2><span class="icon">🏗️</span> 2. Architecture Diagram</h2>
+            <div class="diagram-container">
+                <div class="diagram-title">Decentralized Mesh Topology — Peer-to-Peer Agent Network</div>
+                <div class="mesh-diagram">
+                    <!-- SVG connections -->
+                    <svg class="mesh-svg" viewBox="0 0 500 420">
+                        <!-- Node positions: n1(250,40), n2(70,150), n3(390,150), n4(50,290), n5(410,290), n6(250,380) -->
+                        <!-- Full mesh connections -->
+                        <line x1="250" y1="55" x2="120" y2="150"/>
+                        <line x1="250" y1="55" x2="390" y2="150"/>
+                        <line x1="250" y1="55" x2="50" y2="290"/>
+                        <line x1="250" y1="55" x2="410" y2="290"/>
+                        <line x1="250" y1="55" x2="250" y2="375"/>
+
+                        <line x1="120" y1="165" x2="390" y2="150"/>
+                        <line x1="120" y1="165" x2="50" y2="290"/>
+                        <line x1="120" y1="165" x2="410" y2="290"/>
+                        <line x1="120" y1="165" x2="250" y2="375"/>
+
+                        <line x1="390" y1="165" x2="50" y2="290"/>
+                        <line x1="390" y1="165" x2="410" y2="290"/>
+                        <line x1="390" y1="165" x2="250" y2="375"/>
+
+                        <line x1="50" y1="305" x2="410" y2="290"/>
+                        <line x1="50" y1="305" x2="250" y2="375"/>
+
+                        <line x1="410" y1="305" x2="250" y2="375"/>
+                    </svg>
+
+                    <div class="mesh-node n1">🧠 Researcher<br>Agent</div>
+                    <div class="mesh-node n2">✍️ Writer<br>Agent</div>
+                    <div class="mesh-node n3">💻 Coder<br>Agent</div>
+                    <div class="mesh-node n4">🔍 Reviewer<br>Agent</div>
+                    <div class="mesh-node n5">📊 Analyst<br>Agent</div>
+                    <div class="mesh-node n6">🎨 Designer<br>Agent</div>
+                </div>
+            </div>
+            <p><strong>Key insight:</strong> Every node is connected to every other node via a <em>communication mesh</em>. Any agent can initiate a request to any other agent. There is no designated "leader" — leadership can emerge dynamically through negotiation protocols.</p>
+        </section>
+
+        <!-- 3. Key Components -->
+        <section>
+            <h2><span class="icon">🧩</span> 3. Key Components</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h4>Autonomous Peer Agents</h4>
+                    <p>Each agent is self-governing with its own goals, tools, memory, and decision-making capabilities. No agent has authority over another by default.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔗</div>
+                    <h4>Shared Message Bus</h4>
+                    <p>A pub/sub or broadcast channel where agents post requests, offers, and results. All agents can listen and selectively respond to relevant messages.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🤝</div>
+                    <h4>Negotiation Protocol</h4>
+                    <p>Agents use Contract Net Protocol (CNP), auction-based, or voting mechanisms to decide who handles which task — no central assignment.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📋</div>
+                    <h4>Shared Blackboard / Memory</h4>
+                    <p>A common knowledge store where agents publish findings and read others' contributions — enabling asynchronous collaboration without direct messaging.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h4>Consensus Mechanism</h4>
+                    <p>When agents disagree (e.g., conflicting answers), they use voting, weighted averaging, or deliberation to reach a shared decision.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📡</div>
+                    <h4>Service Discovery</h4>
+                    <p>Agents advertise their capabilities (tools, skills, domains) so peers know who to request help from. Similar to microservice registries.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. Communication Protocols -->
+        <section>
+            <h2><span class="icon">📡</span> 4. Communication & Negotiation Protocols</h2>
+            <div class="protocol-grid">
+                <div class="protocol-card">
+                    <div class="protocol-name">📜 Contract Net Protocol (CNP)</div>
+                    <p>An agent broadcasts a task announcement. Interested agents submit bids with their capabilities and estimated cost. The announcer evaluates bids and awards the contract to the best-fit agent.</p>
+                </div>
+                <div class="protocol-card">
+                    <div class="protocol-name">📢 Publish-Subscribe (Pub/Sub)</div>
+                    <p>Agents subscribe to topic channels (e.g., "research", "code-review"). When an agent publishes a message to a topic, all subscribers receive it — enabling loosely coupled interaction.</p>
+                </div>
+                <div class="protocol-card">
+                    <div class="protocol-name">🗳️ Voting / Consensus</div>
+                    <p>When multiple agents produce conflicting outputs, they vote. Variants include majority vote, weighted vote (based on agent confidence), and deliberative debate before voting.</p>
+                </div>
+                <div class="protocol-card">
+                    <div class="protocol-name">📝 Blackboard Pattern</div>
+                    <p>A shared workspace where agents read the current problem state, contribute partial solutions, and iteratively refine results. The blackboard acts as the coordination medium.</p>
+                </div>
+                <div class="protocol-card">
+                    <div class="protocol-name">💬 Gossip Protocol</div>
+                    <p>Agents randomly share information with neighbors, who propagate it further. Eventually, all agents converge on the same state — inspired by epidemic information dissemination.</p>
+                </div>
+                <div class="protocol-card">
+                    <div class="protocol-name">🤜 Direct Negotiation</div>
+                    <p>Two agents engage in a bilateral negotiation (offer/counter-offer) to agree on task terms, resource sharing, or conflict resolution — without involving other agents.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. How It Works -->
+        <section>
+            <h2><span class="icon">⚡</span> 5. How It Works — Step-by-Step Flow</h2>
+            <div class="flow-steps">
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Task Broadcast</h4>
+                        <p>A user query or external trigger is broadcast to all agents on the shared message bus. Every agent receives the initial task description.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Self-Assessment & Bidding</h4>
+                        <p>Each agent evaluates its own capabilities against the task requirements. Qualified agents submit bids indicating their confidence, estimated time, and required resources.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Task Allocation (Negotiation)</h4>
+                        <p>Through the negotiation protocol (CNP, auction, or consensus), the community determines which agent(s) will handle which aspects of the task. Multiple agents may collaborate.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>Independent Execution with Peer Requests</h4>
+                        <p>Assigned agents execute their tasks independently. If an agent needs help, it broadcasts a sub-task request to the community and another peer picks it up.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h4>Knowledge Sharing (Blackboard)</h4>
+                        <p>As agents produce intermediate results, they publish findings to the shared blackboard. Other agents can read these to inform their own work — enabling emergent collaboration.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <h4>Consensus & Output Assembly</h4>
+                        <p>Once all sub-tasks are complete, agents reach consensus on the final answer through voting or deliberation. The assembled result is delivered to the user.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. Code Example -->
+        <section>
+            <h2><span class="icon">💻</span> 6. Implementation Example</h2>
+            <div class="code-block">
+                <div class="code-header">
+                    <div class="code-dots"><span></span><span></span><span></span></div>
+                    decentralized_agents.py — Conceptual Python Implementation
+                </div>
+                <div class="code-content">
+<pre><span class="comment"># Decentralized Multi-Agent Architecture — Peer-to-Peer</span>
+<span class="keyword">import</span> asyncio
+<span class="keyword">from</span> typing <span class="keyword">import</span> List, Dict, Any, Optional
+
+<span class="keyword">class</span> <span class="class-name">MessageBus</span>:
+    <span class="string">"""Shared communication channel for all agents."""</span>
+    <span class="keyword">def</span> <span class="function">__init__</span>(<span class="param">self</span>):
+        self.subscribers: Dict[str, List] = {}
+        self.blackboard: Dict[str, Any] = {}
+
+    <span class="keyword">def</span> <span class="function">subscribe</span>(<span class="param">self</span>, topic: str, agent: <span class="class-name">'PeerAgent'</span>):
+        self.subscribers.setdefault(topic, []).append(agent)
+
+    <span class="keyword">async def</span> <span class="function">publish</span>(<span class="param">self</span>, topic: str, message: Dict):
+        <span class="keyword">for</span> agent <span class="keyword">in</span> self.subscribers.get(topic, []):
+            <span class="keyword">await</span> agent.<span class="function">on_message</span>(topic, message)
+
+    <span class="keyword">def</span> <span class="function">write_blackboard</span>(<span class="param">self</span>, key: str, value: Any):
+        self.blackboard[key] = value
+
+<span class="keyword">class</span> <span class="class-name">PeerAgent</span>:
+    <span class="string">"""Autonomous peer agent — no master, self-governing."""</span>
+    <span class="keyword">def</span> <span class="function">__init__</span>(<span class="param">self</span>, name: str, skills: List[str], bus: <span class="class-name">MessageBus</span>):
+        self.name = name
+        self.skills = skills
+        self.bus = bus
+        <span class="comment"># Subscribe to relevant topics</span>
+        <span class="keyword">for</span> skill <span class="keyword">in</span> skills:
+            bus.<span class="function">subscribe</span>(skill, self)
+
+    <span class="keyword">async def</span> <span class="function">on_message</span>(<span class="param">self</span>, topic: str, msg: Dict):
+        <span class="keyword">if</span> msg[<span class="string">"type"</span>] == <span class="string">"task_request"</span>:
+            bid = self.<span class="function">evaluate_bid</span>(msg[<span class="string">"task"</span>])
+            <span class="keyword">if</span> bid:
+                <span class="keyword">await</span> self.bus.<span class="function">publish</span>(<span class="string">"bids"</span>, {
+                    <span class="string">"agent"</span>: self.name, <span class="string">"confidence"</span>: bid
+                })
+
+    <span class="keyword">async def</span> <span class="function">execute_and_share</span>(<span class="param">self</span>, task: str):
+        result = self.<span class="function">run_task</span>(task)
+        self.bus.<span class="function">write_blackboard</span>(
+            f<span class="string">"{self.name}_result"</span>, result
+        )
+        <span class="keyword">return</span> result
+
+<span class="comment"># Create the decentralized community</span>
+bus = <span class="class-name">MessageBus</span>()
+agents = [
+    <span class="class-name">PeerAgent</span>(<span class="string">"Researcher"</span>, [<span class="string">"research"</span>, <span class="string">"analysis"</span>], bus),
+    <span class="class-name">PeerAgent</span>(<span class="string">"Coder"</span>, [<span class="string">"coding"</span>, <span class="string">"debugging"</span>], bus),
+    <span class="class-name">PeerAgent</span>(<span class="string">"Writer"</span>, [<span class="string">"writing"</span>, <span class="string">"editing"</span>], bus),
+    <span class="class-name">PeerAgent</span>(<span class="string">"Reviewer"</span>, [<span class="string">"review"</span>, <span class="string">"analysis"</span>], bus),
+]
+
+<span class="comment"># Broadcast a task — agents self-organize</span>
+asyncio.run(bus.<span class="function">publish</span>(<span class="string">"research"</span>, {
+    <span class="string">"type"</span>: <span class="string">"task_request"</span>,
+    <span class="string">"task"</span>: <span class="string">"Analyze market trends in AI"</span>
+}))
+</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. Advantages & Disadvantages -->
+        <section>
+            <h2><span class="icon">⚖️</span> 7. Advantages & Disadvantages</h2>
+            <div class="pros-cons">
+                <div class="pros-card">
+                    <h4>✅ Advantages</h4>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>No single point of failure</strong> — system continues even if agents go offline</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Highly scalable</strong> — add new agents without redesigning the system</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Emergent intelligence</strong> — collective behavior can exceed any individual agent</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Flexible & adaptive</strong> — self-organizes in response to changing conditions</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Reduced bottleneck</strong> — no central coordinator limiting throughput</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Natural load balancing</strong> — work distributes based on agent availability</span></div>
+                </div>
+                <div class="cons-card">
+                    <h4>❌ Disadvantages</h4>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Hard to debug</strong> — no clear execution trace; emergent behavior is unpredictable</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Coordination overhead</strong> — negotiation protocols add latency and complexity</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Inconsistency risk</strong> — agents may reach different conclusions without consensus</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Resource contention</strong> — agents may compete for the same resources or duplicate work</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Complex to design</strong> — requires sophisticated protocols for reliable coordination</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Security concerns</strong> — any agent can communicate with any other, increasing attack surface</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 8. Comparison Table -->
+        <section>
+            <h2><span class="icon">📊</span> 8. Comparison with Other Architectures</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Property</th>
+                            <th>Hierarchical</th>
+                            <th style="background: rgba(16, 185, 129, 0.2);">Decentralized ★</th>
+                            <th>Parallel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Control Flow</strong></td>
+                            <td>Top-down, centralized</td>
+                            <td><strong>Peer-to-peer, distributed</strong></td>
+                            <td>Fan-out / fan-in</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Communication</strong></td>
+                            <td>Vertical (parent ↔ child)</td>
+                            <td><strong>Any-to-any mesh</strong></td>
+                            <td>Dispatcher → workers → aggregator</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Agent Autonomy</strong></td>
+                            <td>Low (follows orders)</td>
+                            <td><strong>High (self-governing)</strong></td>
+                            <td>Low (assigned tasks)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fault Tolerance</strong></td>
+                            <td>Medium (SPOF at root)</td>
+                            <td><strong>High (no SPOF)</strong></td>
+                            <td>High (independent workers)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Coordination</strong></td>
+                            <td>Simple (command chain)</td>
+                            <td><strong>Complex (negotiation)</strong></td>
+                            <td>Simple (dispatch/collect)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Best For</strong></td>
+                            <td>Enterprise workflows</td>
+                            <td><strong>Research, swarms, autonomous systems</strong></td>
+                            <td>Batch processing, voting</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 9. Real-World Use Cases -->
+        <section>
+            <h2><span class="icon">🌍</span> 9. Real-World Use Cases</h2>
+            <div class="use-case">
+                <div class="use-case-icon">🐝</div>
+                <div>
+                    <h4>Swarm Intelligence & Robotics</h4>
+                    <p>Drone swarms for search-and-rescue, warehouse robots coordinating without a central controller — each robot makes local decisions based on sensor data and peer messages.</p>
+                </div>
+            </div>
+            <div class="use-case">
+                <div class="use-case-icon">🏪</div>
+                <div>
+                    <h4>Marketplace Agents</h4>
+                    <p>Trading bots in financial markets, each with its own strategy, negotiating trades peer-to-peer. No central market maker — price discovery emerges from agent interactions.</p>
+                </div>
+            </div>
+            <div class="use-case">
+                <div class="use-case-icon">🔬</div>
+                <div>
+                    <h4>Collaborative Research (AutoGen Groups)</h4>
+                    <p>Microsoft AutoGen's group chat mode where multiple AI agents debate, critique, and refine each other's ideas in a roundtable discussion without a fixed leader.</p>
+                </div>
+            </div>
+            <div class="use-case">
+                <div class="use-case-icon">🌐</div>
+                <div>
+                    <h4>Distributed IoT Networks</h4>
+                    <p>Smart city sensor networks where edge agents process local data and share insights with neighbors, enabling collective traffic management or environmental monitoring.</p>
+                </div>
+            </div>
+            <div class="use-case">
+                <div class="use-case-icon">🗳️</div>
+                <div>
+                    <h4>Multi-Agent Debate Systems</h4>
+                    <p>AI safety research systems where multiple agents argue different perspectives on a topic, with consensus emerging through structured debate rather than top-down direction.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 10. Design Best Practices -->
+        <section>
+            <h2><span class="icon">🎯</span> 10. Design Best Practices</h2>
+            <div class="card">
+                <h3>📡 Define Clear Communication Contracts</h3>
+                <p>Use structured message formats (JSON schemas, protobuf) for all inter-agent communication. Without clear contracts, agents will misinterpret each other's messages.</p>
+
+                <h3>🔒 Implement Access Control Lists</h3>
+                <p>Even in decentralized systems, agents should have capability-based permissions. Not every agent should be able to request every action from every other agent.</p>
+
+                <h3>⏱️ Set Negotiation Timeouts</h3>
+                <p>All negotiation protocols must have deadlines. Without timeouts, agents can deadlock waiting for bids or consensus that never arrives.</p>
+
+                <h3>📊 Use Emergent Monitoring</h3>
+                <p>Since there's no central log, implement distributed tracing (correlation IDs across messages) and aggregate metrics from all agents to understand system-level behavior.</p>
+
+                <h3>🛡️ Prevent Cascading Failures</h3>
+                <p>Implement circuit breakers so that one misbehaving agent doesn't overwhelm the message bus. Rate-limit outgoing messages per agent.</p>
+            </div>
+        </section>
+
+        <!-- 11. Key Takeaways -->
+        <section>
+            <h2><span class="icon">🎓</span> 11. Key Takeaways</h2>
+            <div class="highlight-box">
+                <h4>📌 Summary</h4>
+                <div class="list-item"><span class="check">▸</span> <span>Decentralized architecture treats all agents as <strong>autonomous peers</strong> with no central controller.</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>Coordination happens through <strong>negotiation protocols</strong> (CNP, voting, blackboard) rather than command chains.</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>Provides <strong>maximum fault tolerance and scalability</strong> at the cost of coordination complexity.</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>Best for <strong>autonomous swarms, research debates, and self-organizing systems</strong>.</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>Global intelligence <strong>emerges from local interactions</strong> — the whole exceeds the sum of its parts.</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>Debugging requires <strong>distributed tracing</strong> since there's no single execution log.</span></div>
+            </div>
+        </section>
+
+        <footer>
+            <p>Agentic AI — Credit Course &nbsp;|&nbsp; Module: Multi-Agent Architectures &nbsp;|&nbsp; Decentralized Architecture</p>
+            <p style="margin-top: 0.5rem; font-size: 0.75rem;">© 2026 — Educational Reference Material</p>
+        </footer>
+    </div>
+</body>
+</html>

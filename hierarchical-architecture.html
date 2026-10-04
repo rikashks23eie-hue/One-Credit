@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hierarchical Multi-Agent Architecture | Agentic AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: #1a2236;
+            --bg-card-hover: #1f2a42;
+            --accent-primary: #6366f1;
+            --accent-secondary: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: rgba(99, 102, 241, 0.15);
+            --gradient-1: linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa);
+            --gradient-2: linear-gradient(135deg, #1e1b4b, #312e81);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        /* Background Grid Effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 2rem; position: relative; z-index: 1; }
+
+        /* Hero Section */
+        .hero {
+            padding: 5rem 0 4rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            z-index: -1;
+            opacity: 0.5;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1.5rem;
+        }
+
+        .badge::before { content: '📐'; }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.15;
+            margin-bottom: 1.25rem;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 2rem;
+            font-weight: 400;
+        }
+
+        /* Meta Info */
+        .meta-bar {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Section Styling */
+        section {
+            margin-bottom: 3.5rem;
+        }
+
+        h2 {
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        h2 .icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px; height: 42px;
+            background: rgba(99, 102, 241, 0.12);
+            border-radius: 12px;
+            font-size: 1.25rem;
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent-secondary);
+            margin: 1.5rem 0 0.75rem;
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--gradient-1);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(99, 102, 241, 0.35);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.1);
+        }
+
+        .card:hover::before { opacity: 1; }
+
+        /* Diagram */
+        .diagram-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .diagram-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+
+        .tree { display: flex; flex-direction: column; align-items: center; gap: 0; }
+
+        .node {
+            padding: 0.85rem 1.75rem;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            letter-spacing: 0.02em;
+        }
+
+        .node-master {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            box-shadow: 0 4px 24px rgba(99, 102, 241, 0.4);
+            font-size: 1rem;
+            padding: 1rem 2rem;
+        }
+
+        .node-manager {
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: var(--accent-secondary);
+        }
+
+        .node-worker {
+            background: rgba(52, 211, 153, 0.1);
+            border: 1px solid rgba(52, 211, 153, 0.25);
+            color: #6ee7b7;
+            font-weight: 500;
+            font-size: 0.8rem;
+            padding: 0.6rem 1.2rem;
+        }
+
+        .connector {
+            width: 2px;
+            height: 32px;
+            background: linear-gradient(to bottom, var(--accent-primary), rgba(99, 102, 241, 0.2));
+            margin: 0 auto;
+        }
+
+        .branch-connector {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            height: 32px;
+        }
+
+        .branch-connector::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 25%; right: 25%;
+            height: 2px;
+            background: rgba(99, 102, 241, 0.3);
+        }
+
+        .branch-connector::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 2px; height: 100%;
+            background: linear-gradient(to bottom, var(--accent-primary), rgba(99, 102, 241, 0.2));
+        }
+
+        .level-row {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .level-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .worker-row {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        /* Feature Grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+            margin: 1.5rem 0;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(99, 102, 241, 0.35);
+            transform: translateY(-2px);
+        }
+
+        .feature-icon {
+            width: 44px; height: 44px;
+            background: rgba(99, 102, 241, 0.12);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .feature-card p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        /* Pros/Cons */
+        .pros-cons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .pros-cons { grid-template-columns: 1fr; }
+        }
+
+        .pros-card, .cons-card {
+            border-radius: 14px;
+            padding: 1.75rem;
+        }
+
+        .pros-card {
+            background: rgba(52, 211, 153, 0.05);
+            border: 1px solid rgba(52, 211, 153, 0.15);
+        }
+
+        .cons-card {
+            background: rgba(248, 113, 113, 0.05);
+            border: 1px solid rgba(248, 113, 113, 0.15);
+        }
+
+        .pros-card h4 { color: #6ee7b7; margin-bottom: 1rem; font-size: 1rem; }
+        .cons-card h4 { color: #fca5a5; margin-bottom: 1rem; font-size: 1rem; }
+
+        .list-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            margin-bottom: 0.6rem;
+            font-size: 0.92rem;
+            color: var(--text-secondary);
+        }
+
+        .list-item .check { color: var(--success); font-weight: bold; flex-shrink: 0; }
+        .list-item .cross { color: var(--danger); font-weight: bold; flex-shrink: 0; }
+
+        /* Code Block */
+        .code-block {
+            background: #0d1117;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 1.5rem 0;
+        }
+
+        .code-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            background: rgba(99, 102, 241, 0.08);
+            border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .code-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .code-dots span {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+        }
+
+        .code-dots span:nth-child(1) { background: #f87171; }
+        .code-dots span:nth-child(2) { background: #fbbf24; }
+        .code-dots span:nth-child(3) { background: #34d399; }
+
+        .code-content {
+            padding: 1.25rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            line-height: 1.8;
+            overflow-x: auto;
+            color: #e2e8f0;
+        }
+
+        .code-content .keyword { color: #c084fc; }
+        .code-content .function { color: #67e8f9; }
+        .code-content .string { color: #86efac; }
+        .code-content .comment { color: #64748b; font-style: italic; }
+        .code-content .class-name { color: #fbbf24; }
+        .code-content .param { color: #fb923c; }
+
+        /* Table */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: rgba(99, 102, 241, 0.1);
+            padding: 1rem 1.25rem;
+            text-align: left;
+            font-weight: 700;
+            color: var(--accent-secondary);
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        td {
+            padding: 0.9rem 1.25rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        tr:hover td { background: rgba(99, 102, 241, 0.03); }
+
+        /* Use Case */
+        .use-case {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.25rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .use-case:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .use-case-icon {
+            width: 40px; height: 40px;
+            background: rgba(99, 102, 241, 0.12);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .use-case h4 { font-size: 0.95rem; margin-bottom: 0.3rem; color: var(--text-primary); }
+        .use-case p { font-size: 0.87rem; color: var(--text-muted); margin: 0; }
+
+        /* Flow Steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+
+        .flow-steps::before {
+            content: '';
+            position: absolute;
+            left: 24px;
+            top: 48px;
+            bottom: 24px;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--accent-primary), rgba(99, 102, 241, 0.1));
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.25rem;
+            padding: 1rem 1.25rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .step-number {
+            width: 48px; height: 48px;
+            background: var(--gradient-1);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: white;
+            flex-shrink: 0;
+            z-index: 1;
+        }
+
+        .step-content h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; }
+        .step-content p { font-size: 0.9rem; color: var(--text-muted); margin: 0; }
+
+        /* Highlight Box */
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.08));
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 14px;
+            padding: 1.75rem;
+            margin: 1.5rem 0;
+        }
+
+        .highlight-box h4 {
+            color: var(--accent-secondary);
+            font-size: 1.05rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 3rem 0;
+            border-top: 1px solid var(--border);
+            margin-top: 2rem;
+        }
+
+        footer p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* Print Styles */
+        @media print {
+            body { background: white; color: #1a1a1a; }
+            body::before { display: none; }
+            .hero::after { display: none; }
+            h1 { -webkit-text-fill-color: #4338ca; background: none; }
+            .card, .feature-card, .use-case, .flow-step, .diagram-container {
+                border: 1px solid #ddd;
+                box-shadow: none;
+                break-inside: avoid;
+            }
+            .node-master { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .code-block { break-inside: avoid; }
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.2rem; }
+            .container { padding: 0 1.25rem; }
+            .level-row { gap: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Hero -->
+        <header class="hero">
+            <div class="badge">Multi-Agent Architecture — Module 1 of 3</div>
+            <h1>Hierarchical<br>Multi-Agent Architecture</h1>
+            <p class="subtitle">A structured, top-down approach where a central orchestrator delegates tasks to subordinate agents arranged in a tree-like command hierarchy.</p>
+            <div class="meta-bar">
+                <span class="meta-item">📚 Agentic AI — Credit Course</span>
+                <span class="meta-item">⏱️ Estimated Read: 15 min</span>
+                <span class="meta-item">🏗️ Architecture Pattern</span>
+            </div>
+        </header>
+
+        <!-- 1. Introduction -->
+        <section>
+            <h2><span class="icon">📖</span> 1. Introduction</h2>
+            <div class="card">
+                <p>The <strong>Hierarchical Multi-Agent Architecture</strong> organizes autonomous agents into a layered command structure — much like a corporate organization chart. A <em>master orchestrator</em> sits at the top, delegating complex goals to <em>manager agents</em>, who further decompose work and assign it to specialized <em>worker agents</em>.</p>
+                <p>This is the most widely adopted architecture in production agentic systems today — from AutoGen and CrewAI to enterprise workflow engines — because it mirrors familiar organizational patterns and offers strong control guarantees.</p>
+                <div class="highlight-box">
+                    <h4>💡 Core Principle</h4>
+                    <p style="margin:0;">In a hierarchical system, <strong>authority flows downward</strong> (task decomposition and delegation) while <strong>results flow upward</strong> (aggregation and reporting). No agent acts without receiving a directive from its parent.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Architecture Diagram -->
+        <section>
+            <h2><span class="icon">🏗️</span> 2. Architecture Diagram</h2>
+            <div class="diagram-container">
+                <div class="diagram-title">Hierarchical Agent Topology — Three-Level Command Tree</div>
+                <div class="tree">
+                    <!-- Level 0: Master -->
+                    <div class="node node-master">👑 Master Orchestrator</div>
+                    <div class="connector"></div>
+
+                    <!-- Branch to Level 1 -->
+                    <div class="branch-connector"></div>
+
+                    <!-- Level 1: Managers -->
+                    <div class="level-row">
+                        <div class="level-col">
+                            <div class="node node-manager">🔧 Manager Agent A</div>
+                            <div class="connector"></div>
+                            <div class="worker-row">
+                                <div class="node node-worker">⚙️ Worker A1</div>
+                                <div class="node node-worker">⚙️ Worker A2</div>
+                            </div>
+                        </div>
+                        <div class="level-col">
+                            <div class="node node-manager">🔧 Manager Agent B</div>
+                            <div class="connector"></div>
+                            <div class="worker-row">
+                                <div class="node node-worker">⚙️ Worker B1</div>
+                                <div class="node node-worker">⚙️ Worker B2</div>
+                                <div class="node node-worker">⚙️ Worker B3</div>
+                            </div>
+                        </div>
+                        <div class="level-col">
+                            <div class="node node-manager">🔧 Manager Agent C</div>
+                            <div class="connector"></div>
+                            <div class="worker-row">
+                                <div class="node node-worker">⚙️ Worker C1</div>
+                                <div class="node node-worker">⚙️ Worker C2</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p><strong>Legend:</strong> 👑 <em>Master Orchestrator</em> — receives the user goal and decomposes it. 🔧 <em>Manager Agents</em> — domain leads who break sub-tasks further. ⚙️ <em>Worker Agents</em> — specialized executors (e.g., code writer, web searcher, data analyst).</p>
+        </section>
+
+        <!-- 3. Key Components -->
+        <section>
+            <h2><span class="icon">🧩</span> 3. Key Components</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">👑</div>
+                    <h4>Master Orchestrator</h4>
+                    <p>Receives the top-level goal, performs task decomposition via chain-of-thought planning, and distributes sub-goals to manager agents. Monitors progress and handles failures.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔧</div>
+                    <h4>Manager Agents (Mid-tier)</h4>
+                    <p>Domain-specific coordinators that further decompose assigned sub-tasks, manage a pool of worker agents, aggregate their outputs, and report results upstream.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚙️</div>
+                    <h4>Worker Agents (Leaf)</h4>
+                    <p>Specialized executors with specific tools (APIs, code execution, search). They perform atomic tasks and return structured results to their parent manager.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📨</div>
+                    <h4>Message Bus / Channel</h4>
+                    <p>The communication backbone enabling structured message passing between parent and child agents. Messages flow vertically through the hierarchy.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📋</div>
+                    <h4>Task Queue</h4>
+                    <p>A priority-ordered queue managed by each parent to schedule, assign, and track the status of tasks delegated to child agents.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <h4>Result Aggregator</h4>
+                    <p>The mechanism by which parent agents combine, validate, and synthesize results flowing up from their children before forwarding to their own parent.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. How It Works -->
+        <section>
+            <h2><span class="icon">⚡</span> 4. How It Works — Step-by-Step Flow</h2>
+            <div class="flow-steps">
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Goal Reception</h4>
+                        <p>The user submits a complex request (e.g., "Analyze competitor landscape and generate a strategic report"). The Master Orchestrator receives this as the top-level goal.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Task Decomposition</h4>
+                        <p>The Master uses chain-of-thought reasoning to break the goal into sub-tasks: (A) Data Collection, (B) Analysis, (C) Report Generation. Each sub-task is assigned to a Manager Agent.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Sub-task Delegation</h4>
+                        <p>Manager A (Data Collection) further decomposes into: scrape websites (Worker A1), search academic papers (Worker A2). Delegation continues recursively down the tree.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>Execution at Leaf Nodes</h4>
+                        <p>Worker agents execute their atomic tasks using domain-specific tools — web scraping, API calls, code execution, database queries — and return structured results.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h4>Result Aggregation (Bottom-Up)</h4>
+                        <p>Manager agents receive worker outputs, validate them for quality, resolve conflicts, aggregate insights, and forward a consolidated result to the Master.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <h4>Final Synthesis & Delivery</h4>
+                        <p>The Master Orchestrator compiles all manager results into a cohesive final output, performs quality checks, and delivers the completed artifact to the user.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. Code Example -->
+        <section>
+            <h2><span class="icon">💻</span> 5. Implementation Example</h2>
+            <div class="code-block">
+                <div class="code-header">
+                    <div class="code-dots"><span></span><span></span><span></span></div>
+                    hierarchical_agents.py — Conceptual Python Implementation
+                </div>
+                <div class="code-content">
+<pre><span class="comment"># Hierarchical Multi-Agent Architecture — Conceptual Implementation</span>
+<span class="keyword">from</span> typing <span class="keyword">import</span> List, Dict, Any
+
+<span class="keyword">class</span> <span class="class-name">Agent</span>:
+    <span class="keyword">def</span> <span class="function">__init__</span>(<span class="param">self</span>, name: str, role: str):
+        self.name = name
+        self.role = role
+        self.children: List[Agent] = []
+
+    <span class="keyword">def</span> <span class="function">add_child</span>(<span class="param">self</span>, child: <span class="class-name">'Agent'</span>):
+        self.children.append(child)
+
+    <span class="keyword">def</span> <span class="function">execute</span>(<span class="param">self</span>, task: str) -> Dict[str, Any]:
+        <span class="keyword">raise</span> NotImplementedError
+
+<span class="keyword">class</span> <span class="class-name">WorkerAgent</span>(<span class="class-name">Agent</span>):
+    <span class="string">"""Leaf node — executes atomic tasks with tools."""</span>
+    <span class="keyword">def</span> <span class="function">execute</span>(<span class="param">self</span>, task: str) -> Dict[str, Any]:
+        result = self.<span class="function">use_tool</span>(task)  <span class="comment"># API call, code exec, etc.</span>
+        <span class="keyword">return</span> {<span class="string">"agent"</span>: self.name, <span class="string">"result"</span>: result}
+
+<span class="keyword">class</span> <span class="class-name">ManagerAgent</span>(<span class="class-name">Agent</span>):
+    <span class="string">"""Mid-tier — decomposes and delegates to workers."""</span>
+    <span class="keyword">def</span> <span class="function">execute</span>(<span class="param">self</span>, task: str) -> Dict[str, Any]:
+        sub_tasks = self.<span class="function">decompose</span>(task)
+        results = []
+        <span class="keyword">for</span> sub_task, worker <span class="keyword">in</span> zip(sub_tasks, self.children):
+            results.append(worker.<span class="function">execute</span>(sub_task))
+        <span class="keyword">return</span> self.<span class="function">aggregate</span>(results)
+
+<span class="keyword">class</span> <span class="class-name">MasterOrchestrator</span>(<span class="class-name">Agent</span>):
+    <span class="string">"""Root node — top-level goal decomposition."""</span>
+    <span class="keyword">def</span> <span class="function">execute</span>(<span class="param">self</span>, goal: str) -> Dict[str, Any]:
+        plan = self.<span class="function">plan</span>(goal)      <span class="comment"># Chain-of-thought planning</span>
+        results = []
+        <span class="keyword">for</span> sub_goal, manager <span class="keyword">in</span> zip(plan, self.children):
+            results.append(manager.<span class="function">execute</span>(sub_goal))
+        <span class="keyword">return</span> self.<span class="function">synthesize</span>(results)
+
+<span class="comment"># Build the hierarchy</span>
+master = <span class="class-name">MasterOrchestrator</span>(<span class="string">"Orchestrator"</span>, <span class="string">"master"</span>)
+research_mgr = <span class="class-name">ManagerAgent</span>(<span class="string">"Research Lead"</span>, <span class="string">"manager"</span>)
+research_mgr.<span class="function">add_child</span>(<span class="class-name">WorkerAgent</span>(<span class="string">"Web Scraper"</span>, <span class="string">"worker"</span>))
+research_mgr.<span class="function">add_child</span>(<span class="class-name">WorkerAgent</span>(<span class="string">"Paper Searcher"</span>, <span class="string">"worker"</span>))
+master.<span class="function">add_child</span>(research_mgr)
+
+<span class="comment"># Execute</span>
+output = master.<span class="function">execute</span>(<span class="string">"Analyze competitor landscape"</span>)
+</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. Advantages & Disadvantages -->
+        <section>
+            <h2><span class="icon">⚖️</span> 6. Advantages & Disadvantages</h2>
+            <div class="pros-cons">
+                <div class="pros-card">
+                    <h4>✅ Advantages</h4>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Clear control flow</strong> — well-defined authority and responsibility at each level</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Scalable decomposition</strong> — complex goals broken into manageable sub-tasks naturally</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Fault isolation</strong> — failures at leaf nodes don't cascade; managers can retry or reassign</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Easier debugging</strong> — trace execution path from root to leaf for any issue</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Familiar pattern</strong> — mirrors organizational structures; intuitive to design and explain</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Security boundaries</strong> — strict access control at each tier level</span></div>
+                </div>
+                <div class="cons-card">
+                    <h4>❌ Disadvantages</h4>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Single point of failure</strong> — master agent failure brings down the entire system</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Communication bottleneck</strong> — all messages must flow through parent nodes</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Latency overhead</strong> — deep hierarchies add latency from multiple delegation hops</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Rigid structure</strong> — difficult to adapt dynamically to changing requirements</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Coordination overhead</strong> — cross-branch collaboration requires routing through common ancestors</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Context loss</strong> — information may be lost or distorted as it passes through multiple layers</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. Comparison Table -->
+        <section>
+            <h2><span class="icon">📊</span> 7. Comparison with Other Architectures</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Property</th>
+                            <th>Hierarchical</th>
+                            <th>Decentralized</th>
+                            <th>Parallel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Control Flow</strong></td>
+                            <td>Top-down, centralized</td>
+                            <td>Peer-to-peer, distributed</td>
+                            <td>Fan-out / fan-in</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Communication</strong></td>
+                            <td>Vertical (parent ↔ child)</td>
+                            <td>Any-to-any mesh</td>
+                            <td>Dispatcher → workers → aggregator</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fault Tolerance</strong></td>
+                            <td>Medium (SPOF at root)</td>
+                            <td>High (no single point)</td>
+                            <td>High (independent workers)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Scalability</strong></td>
+                            <td>Moderate (bottleneck at top)</td>
+                            <td>High (scales horizontally)</td>
+                            <td>High (add more workers)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Best For</strong></td>
+                            <td>Complex workflows, enterprise</td>
+                            <td>Autonomous swarms, research</td>
+                            <td>Batch processing, voting</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 8. Real-World Use Cases -->
+        <section>
+            <h2><span class="icon">🌍</span> 8. Real-World Use Cases</h2>
+            <div class="use-case">
+                <div class="use-case-icon">🤖</div>
+                <div>
+                    <h4>AutoGen / CrewAI Pipelines</h4>
+                    <p>Production frameworks like Microsoft AutoGen and CrewAI implement hierarchical patterns where a "crew leader" delegates to specialist agents (researcher, writer, coder) in a defined workflow.</p>
+                </div>
+            </div>
+            <div class="use-case">
+                <div class="use-case-icon">🏢</div>
+                <div>
+                    <h4>Enterprise Workflow Automation</h4>
+                    <p>Customer support systems where a routing agent classifies intent, delegates to department-specific managers (billing, technical, sales), who in turn invoke specialized action agents.</p>
+                </div>
+            </div>
+            <div class="use-case">
+                <div class="use-case-icon">📊</div>
+                <div>
+                    <h4>Multi-Step Data Analytics</h4>
+                    <p>An analytics orchestrator that delegates data collection to a scraping manager, analysis to a statistics manager, and visualization to a charting manager — each with their own worker pools.</p>
+                </div>
+            </div>
+            <div class="use-case">
+                <div class="use-case-icon">🧪</div>
+                <div>
+                    <h4>Scientific Research Assistants</h4>
+                    <p>A research agent that decomposes a hypothesis-testing workflow into literature review, data gathering, experiment design, and analysis — each managed by a domain-expert sub-agent.</p>
+                </div>
+            </div>
+            <div class="use-case">
+                <div class="use-case-icon">💻</div>
+                <div>
+                    <h4>Software Development Pipelines</h4>
+                    <p>A lead agent that coordinates planning, coding, testing, and deployment agents — with each phase having dedicated specialist workers (unit tester, linter, deployer).</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 9. Design Best Practices -->
+        <section>
+            <h2><span class="icon">🎯</span> 9. Design Best Practices</h2>
+            <div class="card">
+                <h3>📐 Keep Hierarchies Shallow</h3>
+                <p>Limit your tree to 2-3 levels. Each additional level adds latency and increases the risk of context loss during message passing. Deep hierarchies rarely outperform flat ones.</p>
+
+                <h3>🔄 Implement Retry & Fallback</h3>
+                <p>Manager agents should implement retry logic for failed workers and have fallback strategies (alternative workers, graceful degradation) to prevent sub-task failures from stalling the pipeline.</p>
+
+                <h3>📝 Structured Communication Protocols</h3>
+                <p>Define clear message schemas (JSON/Pydantic models) for task assignments and result reports. Avoid free-form natural language between agents — it increases error rates significantly.</p>
+
+                <h3>🔒 Least Privilege at Leaf Nodes</h3>
+                <p>Worker agents should have access only to the tools they need. A web-scraper agent shouldn't have database write permissions. This limits blast radius from rogue or compromised agents.</p>
+
+                <h3>📊 Observability at Every Level</h3>
+                <p>Log all inter-agent messages, task assignments, and results. Implement tracing (OpenTelemetry-style) from master to leaf so you can reconstruct the full execution trace for debugging.</p>
+            </div>
+        </section>
+
+        <!-- 10. Key Takeaways -->
+        <section>
+            <h2><span class="icon">🎓</span> 10. Key Takeaways</h2>
+            <div class="highlight-box">
+                <h4>📌 Summary</h4>
+                <div class="list-item"><span class="check">▸</span> <span>Hierarchical architecture is the <strong>most production-proven</strong> pattern for multi-agent systems.</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>It provides <strong>clear control, accountability, and traceability</strong> — critical for enterprise adoption.</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>The core trade-off is <strong>control vs. flexibility</strong> — strong governance at the cost of adaptability.</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>Best suited for <strong>deterministic, multi-step workflows</strong> where task decomposition is well-defined.</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>Frameworks like <strong>AutoGen, CrewAI, and LangGraph</strong> provide built-in hierarchical patterns.</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>Always prefer <strong>shallow hierarchies</strong> (2-3 levels) with clear communication contracts.</span></div>
+            </div>
+        </section>
+
+        <footer>
+            <p>Agentic AI — Credit Course &nbsp;|&nbsp; Module: Multi-Agent Architectures &nbsp;|&nbsp; Hierarchical Architecture</p>
+            <p style="margin-top: 0.5rem; font-size: 0.75rem;">© 2026 — Educational Reference Material</p>
+        </footer>
+    </div>
+</body>
+</html>

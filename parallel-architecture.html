@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallel Multi-Agent Architecture | Agentic AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: #1a2236;
+            --accent-primary: #f59e0b;
+            --accent-secondary: #fbbf24;
+            --accent-glow: rgba(245, 158, 11, 0.25);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: rgba(245, 158, 11, 0.15);
+            --gradient-1: linear-gradient(135deg, #f59e0b, #f97316, #fb923c);
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(rgba(245, 158, 11, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(245, 158, 11, 0.02) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 2rem; position: relative; z-index: 1; }
+
+        /* Hero */
+        .hero {
+            padding: 5rem 0 4rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            z-index: -1;
+            opacity: 0.4;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1.5rem;
+        }
+
+        .badge::before { content: '⚡'; }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.15;
+            margin-bottom: 1.25rem;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            max-width: 720px;
+            margin: 0 auto 2rem;
+            font-weight: 400;
+        }
+
+        .meta-bar {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Sections */
+        section { margin-bottom: 3.5rem; }
+
+        h2 {
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        h2 .icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px; height: 42px;
+            background: rgba(245, 158, 11, 0.12);
+            border-radius: 12px;
+            font-size: 1.25rem;
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent-secondary);
+            margin: 1.5rem 0 0.75rem;
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--gradient-1);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(245, 158, 11, 0.35);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(245, 158, 11, 0.1);
+        }
+
+        .card:hover::before { opacity: 1; }
+
+        /* Parallel Diagram */
+        .diagram-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .diagram-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+
+        .parallel-flow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+        }
+
+        .node {
+            padding: 0.85rem 1.75rem;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .node-dispatcher {
+            background: linear-gradient(135deg, #f59e0b, #f97316);
+            color: white;
+            box-shadow: 0 4px 24px rgba(245, 158, 11, 0.4);
+            font-size: 1rem;
+            padding: 1rem 2rem;
+        }
+
+        .node-aggregator {
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            color: white;
+            box-shadow: 0 4px 24px rgba(139, 92, 246, 0.4);
+            font-size: 1rem;
+            padding: 1rem 2rem;
+        }
+
+        .connector {
+            width: 2px;
+            height: 28px;
+            background: linear-gradient(to bottom, var(--accent-primary), rgba(245, 158, 11, 0.2));
+            margin: 0 auto;
+        }
+
+        .fan-out {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            margin: 0.5rem 0;
+        }
+
+        .fan-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-muted);
+            padding: 0.3rem 0.8rem;
+            background: rgba(245, 158, 11, 0.1);
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .workers-row {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 0.5rem 0;
+        }
+
+        .worker-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .worker-node {
+            padding: 0.7rem 1.3rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            min-width: 110px;
+        }
+
+        .worker-node.w1 { background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.25); color: #fde68a; }
+        .worker-node.w2 { background: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.25); color: #6ee7b7; }
+        .worker-node.w3 { background: rgba(6, 182, 212, 0.12); border: 1px solid rgba(6, 182, 212, 0.25); color: #67e8f9; }
+        .worker-node.w4 { background: rgba(244, 63, 94, 0.12); border: 1px solid rgba(244, 63, 94, 0.25); color: #fda4af; }
+        .worker-node.w5 { background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.25); color: #c4b5fd; }
+
+        .worker-status {
+            font-size: 0.65rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 8px;
+            background: rgba(52, 211, 153, 0.15);
+            color: #6ee7b7;
+            font-weight: 500;
+        }
+
+        .connector-up {
+            width: 2px;
+            height: 28px;
+            background: linear-gradient(to bottom, rgba(139, 92, 246, 0.2), #8b5cf6);
+            margin: 0 auto;
+        }
+
+        /* Feature Grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+            margin: 1.5rem 0;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(245, 158, 11, 0.35);
+            transform: translateY(-2px);
+        }
+
+        .feature-icon {
+            width: 44px; height: 44px;
+            background: rgba(245, 158, 11, 0.12);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .feature-card p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        /* Pros/Cons */
+        .pros-cons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        @media (max-width: 768px) { .pros-cons { grid-template-columns: 1fr; } }
+
+        .pros-card, .cons-card { border-radius: 14px; padding: 1.75rem; }
+        .pros-card { background: rgba(52, 211, 153, 0.05); border: 1px solid rgba(52, 211, 153, 0.15); }
+        .cons-card { background: rgba(248, 113, 113, 0.05); border: 1px solid rgba(248, 113, 113, 0.15); }
+        .pros-card h4 { color: #6ee7b7; margin-bottom: 1rem; font-size: 1rem; }
+        .cons-card h4 { color: #fca5a5; margin-bottom: 1rem; font-size: 1rem; }
+
+        .list-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            margin-bottom: 0.6rem;
+            font-size: 0.92rem;
+            color: var(--text-secondary);
+        }
+
+        .list-item .check { color: var(--success); font-weight: bold; flex-shrink: 0; }
+        .list-item .cross { color: var(--danger); font-weight: bold; flex-shrink: 0; }
+
+        /* Strategy Cards */
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+            margin: 1.5rem 0;
+        }
+
+        .strategy-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .strategy-card:hover { border-color: rgba(245, 158, 11, 0.35); }
+
+        .strategy-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--accent-secondary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .strategy-card p { font-size: 0.88rem; color: var(--text-muted); margin: 0; }
+
+        /* Code Block */
+        .code-block {
+            background: #0d1117;
+            border: 1px solid rgba(245, 158, 11, 0.15);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 1.5rem 0;
+        }
+
+        .code-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            background: rgba(245, 158, 11, 0.08);
+            border-bottom: 1px solid rgba(245, 158, 11, 0.1);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .code-dots { display: flex; gap: 6px; }
+        .code-dots span { width: 10px; height: 10px; border-radius: 50%; }
+        .code-dots span:nth-child(1) { background: #f87171; }
+        .code-dots span:nth-child(2) { background: #fbbf24; }
+        .code-dots span:nth-child(3) { background: #34d399; }
+
+        .code-content {
+            padding: 1.25rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            line-height: 1.8;
+            overflow-x: auto;
+            color: #e2e8f0;
+        }
+
+        .code-content .keyword { color: #c084fc; }
+        .code-content .function { color: #67e8f9; }
+        .code-content .string { color: #86efac; }
+        .code-content .comment { color: #64748b; font-style: italic; }
+        .code-content .class-name { color: #fbbf24; }
+        .code-content .param { color: #fb923c; }
+
+        /* Table */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+
+        th {
+            background: rgba(245, 158, 11, 0.1);
+            padding: 1rem 1.25rem;
+            text-align: left;
+            font-weight: 700;
+            color: var(--accent-secondary);
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        td {
+            padding: 0.9rem 1.25rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        tr:hover td { background: rgba(245, 158, 11, 0.03); }
+
+        /* Use Case */
+        .use-case {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.25rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .use-case:hover { border-color: rgba(245, 158, 11, 0.3); }
+
+        .use-case-icon {
+            width: 40px; height: 40px;
+            background: rgba(245, 158, 11, 0.12);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .use-case h4 { font-size: 0.95rem; margin-bottom: 0.3rem; color: var(--text-primary); }
+        .use-case p { font-size: 0.87rem; color: var(--text-muted); margin: 0; }
+
+        /* Flow Steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+
+        .flow-steps::before {
+            content: '';
+            position: absolute;
+            left: 24px;
+            top: 48px;
+            bottom: 24px;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--accent-primary), rgba(245, 158, 11, 0.1));
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.25rem;
+            padding: 1rem 1.25rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .step-number {
+            width: 48px; height: 48px;
+            background: var(--gradient-1);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: white;
+            flex-shrink: 0;
+            z-index: 1;
+        }
+
+        .step-content h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; }
+        .step-content p { font-size: 0.9rem; color: var(--text-muted); margin: 0; }
+
+        /* Highlight Box */
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(249, 115, 22, 0.08));
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 14px;
+            padding: 1.75rem;
+            margin: 1.5rem 0;
+        }
+
+        .highlight-box h4 {
+            color: var(--accent-secondary);
+            font-size: 1.05rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Timing Diagram */
+        .timing-diagram {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        .timing-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            gap: 0.75rem;
+        }
+
+        .timing-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            min-width: 90px;
+            text-align: right;
+        }
+
+        .timing-bar {
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 0.05em;
+        }
+
+        .timing-idle {
+            background: rgba(100, 116, 139, 0.15);
+            border: 1px dashed rgba(100, 116, 139, 0.3);
+            color: var(--text-muted);
+        }
+
+        .timing-active { background: linear-gradient(90deg, #f59e0b, #f97316); }
+        .timing-active-2 { background: linear-gradient(90deg, #10b981, #06b6d4); }
+        .timing-active-3 { background: linear-gradient(90deg, #8b5cf6, #6366f1); }
+        .timing-active-4 { background: linear-gradient(90deg, #f43f5e, #e11d48); }
+        .timing-merge { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+
+        .timing-axis {
+            display: flex;
+            margin-top: 0.5rem;
+            padding-left: 100px;
+            gap: 0;
+        }
+
+        .timing-tick {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 3rem 0;
+            border-top: 1px solid var(--border);
+            margin-top: 2rem;
+        }
+
+        footer p { color: var(--text-muted); font-size: 0.85rem; }
+
+        /* Print */
+        @media print {
+            body { background: white; color: #1a1a1a; }
+            body::before { display: none; }
+            .hero::after { display: none; }
+            h1 { -webkit-text-fill-color: #d97706; background: none; }
+            .card, .feature-card, .use-case, .flow-step, .diagram-container {
+                border: 1px solid #ddd;
+                box-shadow: none;
+                break-inside: avoid;
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.2rem; }
+            .container { padding: 0 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Hero -->
+        <header class="hero">
+            <div class="badge">Multi-Agent Architecture — Module 3 of 3</div>
+            <h1>Parallel<br>Multi-Agent Architecture</h1>
+            <p class="subtitle">A fan-out / fan-in pattern where a dispatcher sends the same or different tasks to multiple agents simultaneously, then aggregates their results for maximum speed and reliability.</p>
+            <div class="meta-bar">
+                <span class="meta-item">📚 Agentic AI — Credit Course</span>
+                <span class="meta-item">⏱️ Estimated Read: 15 min</span>
+                <span class="meta-item">⚡ Architecture Pattern</span>
+            </div>
+        </header>
+
+        <!-- 1. Introduction -->
+        <section>
+            <h2><span class="icon">📖</span> 1. Introduction</h2>
+            <div class="card">
+                <p>The <strong>Parallel Multi-Agent Architecture</strong> is designed for <em>speed and redundancy</em>. A central dispatcher fans out tasks to multiple worker agents that execute simultaneously. Results are then fanned back into an aggregator that combines, compares, or selects the best output.</p>
+                <p>Think of it as <strong>MapReduce for AI agents</strong>: split the work, process in parallel, merge the results. This pattern is fundamental in scenarios requiring consensus (voting systems), throughput (batch processing), or reliability (redundant execution).</p>
+                <div class="highlight-box">
+                    <h4>💡 Core Principle</h4>
+                    <p style="margin:0;"><strong>Concurrent execution for speed and robustness.</strong> Multiple agents work on the same or different aspects of a problem simultaneously. The aggregator then synthesizes a final answer — whether by majority vote, best-of-N selection, or merging complementary results.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Architecture Diagram -->
+        <section>
+            <h2><span class="icon">🏗️</span> 2. Architecture Diagram</h2>
+            <div class="diagram-container">
+                <div class="diagram-title">Parallel Fan-Out / Fan-In Topology</div>
+                <div class="parallel-flow">
+                    <!-- Dispatcher -->
+                    <div class="node node-dispatcher">📤 Dispatcher / Router</div>
+                    <div class="connector"></div>
+                    <div class="fan-label">⚡ FAN-OUT (simultaneous dispatch)</div>
+                    <div style="height: 12px;"></div>
+
+                    <!-- Workers -->
+                    <div class="workers-row">
+                        <div class="worker-card">
+                            <div class="worker-node w1">
+                                🔧 Agent 1
+                                <span style="font-size: 0.65rem; opacity: 0.7;">Model A</span>
+                            </div>
+                            <div class="worker-status">▶ Running</div>
+                        </div>
+                        <div class="worker-card">
+                            <div class="worker-node w2">
+                                🔧 Agent 2
+                                <span style="font-size: 0.65rem; opacity: 0.7;">Model B</span>
+                            </div>
+                            <div class="worker-status">▶ Running</div>
+                        </div>
+                        <div class="worker-card">
+                            <div class="worker-node w3">
+                                🔧 Agent 3
+                                <span style="font-size: 0.65rem; opacity: 0.7;">Specialist</span>
+                            </div>
+                            <div class="worker-status">▶ Running</div>
+                        </div>
+                        <div class="worker-card">
+                            <div class="worker-node w4">
+                                🔧 Agent 4
+                                <span style="font-size: 0.65rem; opacity: 0.7;">Fallback</span>
+                            </div>
+                            <div class="worker-status">▶ Running</div>
+                        </div>
+                        <div class="worker-card">
+                            <div class="worker-node w5">
+                                🔧 Agent N
+                                <span style="font-size: 0.65rem; opacity: 0.7;">Redundant</span>
+                            </div>
+                            <div class="worker-status">▶ Running</div>
+                        </div>
+                    </div>
+
+                    <div style="height: 12px;"></div>
+                    <div class="fan-label">📥 FAN-IN (collect & aggregate)</div>
+                    <div class="connector-up"></div>
+
+                    <!-- Aggregator -->
+                    <div class="node node-aggregator">🧮 Aggregator / Merger</div>
+                </div>
+            </div>
+            <p><strong>Two sub-patterns:</strong> (1) <em>Same-task parallelism</em> — all agents solve the same problem (for voting/redundancy). (2) <em>Split-task parallelism</em> — each agent handles a different chunk of the problem (for throughput).</p>
+        </section>
+
+        <!-- 3. Parallel Execution Timing -->
+        <section>
+            <h2><span class="icon">⏱️</span> 3. Parallel vs Sequential — Timing</h2>
+            <div class="timing-diagram">
+                <div class="diagram-title" style="text-align: left; margin-bottom: 1.5rem;">Execution Timeline Comparison</div>
+
+                <p style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.75rem;">SEQUENTIAL (one after another):</p>
+                <div class="timing-row">
+                    <div class="timing-label">Agent 1</div>
+                    <div class="timing-bar timing-active" style="width: 22%;">Task 1</div>
+                    <div class="timing-bar timing-idle" style="width: 58%;"></div>
+                </div>
+                <div class="timing-row">
+                    <div class="timing-label">Agent 2</div>
+                    <div class="timing-bar timing-idle" style="width: 22%;"></div>
+                    <div class="timing-bar timing-active-2" style="width: 18%;">Task 2</div>
+                    <div class="timing-bar timing-idle" style="width: 40%;"></div>
+                </div>
+                <div class="timing-row">
+                    <div class="timing-label">Agent 3</div>
+                    <div class="timing-bar timing-idle" style="width: 40%;"></div>
+                    <div class="timing-bar timing-active-3" style="width: 25%;">Task 3</div>
+                    <div class="timing-bar timing-idle" style="width: 15%;"></div>
+                </div>
+                <div class="timing-row">
+                    <div class="timing-label">Agent 4</div>
+                    <div class="timing-bar timing-idle" style="width: 65%;"></div>
+                    <div class="timing-bar timing-active-4" style="width: 15%;">Task 4</div>
+                </div>
+                <div class="timing-row" style="margin-top: 0.25rem;">
+                    <div class="timing-label" style="font-size: 0.72rem; color: var(--danger);">Total ≈ 25s</div>
+                    <div class="timing-bar" style="width: 80%; height: 4px; background: linear-gradient(90deg, #f87171, #991b1b); border-radius: 4px;"></div>
+                </div>
+
+                <div style="height: 1.5rem;"></div>
+
+                <p style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.75rem;">PARALLEL (all at once):</p>
+                <div class="timing-row">
+                    <div class="timing-label">Agent 1</div>
+                    <div class="timing-bar timing-active" style="width: 22%;">Task 1</div>
+                    <div class="timing-bar timing-idle" style="width: 8%;"></div>
+                </div>
+                <div class="timing-row">
+                    <div class="timing-label">Agent 2</div>
+                    <div class="timing-bar timing-active-2" style="width: 18%;">Task 2</div>
+                    <div class="timing-bar timing-idle" style="width: 12%;"></div>
+                </div>
+                <div class="timing-row">
+                    <div class="timing-label">Agent 3</div>
+                    <div class="timing-bar timing-active-3" style="width: 25%;">Task 3</div>
+                    <div class="timing-bar timing-idle" style="width: 5%;"></div>
+                </div>
+                <div class="timing-row">
+                    <div class="timing-label">Agent 4</div>
+                    <div class="timing-bar timing-active-4" style="width: 15%;">Task 4</div>
+                    <div class="timing-bar timing-idle" style="width: 15%;"></div>
+                </div>
+                <div class="timing-row" style="margin-top: 0.25rem;">
+                    <div class="timing-label" style="font-size: 0.72rem; color: var(--success);">Total ≈ 8s</div>
+                    <div class="timing-bar" style="width: 30%; height: 4px; background: linear-gradient(90deg, #34d399, #059669); border-radius: 4px;"></div>
+                </div>
+
+                <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted);"><strong>Result:</strong> Parallel execution completes in the time of the <em>slowest</em> agent (~8s), not the <em>sum</em> of all agents (~25s). A <strong>~3x speedup</strong> in this example.</p>
+            </div>
+        </section>
+
+        <!-- 4. Key Components -->
+        <section>
+            <h2><span class="icon">🧩</span> 4. Key Components</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📤</div>
+                    <h4>Dispatcher / Router</h4>
+                    <p>Receives the input task, decides on the parallelization strategy (same-task or split-task), and fans out work to all available worker agents simultaneously.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔧</div>
+                    <h4>Worker Agents (Parallel Pool)</h4>
+                    <p>Independent agents that execute their assigned task concurrently. Each worker operates in isolation — no inter-worker communication during execution.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🧮</div>
+                    <h4>Aggregator / Merger</h4>
+                    <p>Collects results from all workers and combines them — using voting, ranking, merging, or selection — into a single coherent final output.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⏱️</div>
+                    <h4>Timeout & Fallback Handler</h4>
+                    <p>Manages worker timeouts and failures. Returns partial results if some workers are slow, and uses fallback workers when primaries fail.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h4>Result Scorer / Evaluator</h4>
+                    <p>An optional quality judge that scores each worker's output before aggregation — ensuring only high-quality results contribute to the final answer.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h4>Load Balancer</h4>
+                    <p>Distributes incoming tasks across worker pools based on availability, capacity, and specialization — preventing overload of individual agents.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. Aggregation Strategies -->
+        <section>
+            <h2><span class="icon">🧮</span> 5. Aggregation Strategies</h2>
+            <div class="strategy-grid">
+                <div class="strategy-card">
+                    <div class="strategy-name">🗳️ Majority Voting</div>
+                    <p>Each worker produces an answer. The most common answer wins. Used for classification tasks, fact-checking, and multiple-choice questions. Increases accuracy through redundancy.</p>
+                </div>
+                <div class="strategy-card">
+                    <div class="strategy-name">🏆 Best-of-N Selection</div>
+                    <p>All N workers attempt the same task. A judge agent evaluates all outputs and selects the highest-quality one. Great for code generation and creative writing.</p>
+                </div>
+                <div class="strategy-card">
+                    <div class="strategy-name">🔗 Result Merging</div>
+                    <p>Each worker handles a different sub-task (e.g., different document sections). The aggregator concatenates or interleaves results into a unified output.</p>
+                </div>
+                <div class="strategy-card">
+                    <div class="strategy-name">📈 Weighted Average</div>
+                    <p>Workers output numerical scores or probabilities. The aggregator computes a weighted average, where weights reflect agent confidence or historical accuracy.</p>
+                </div>
+                <div class="strategy-card">
+                    <div class="strategy-name">🏃 First-Past-the-Post</div>
+                    <p>The aggregator returns the first valid result and cancels remaining workers. Minimizes latency by racing agents against each other.</p>
+                </div>
+                <div class="strategy-card">
+                    <div class="strategy-name">🔍 Ensemble with Verification</div>
+                    <p>Workers generate candidate solutions. A separate verifier agent checks each for correctness. The first verified-correct answer is returned.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. How It Works -->
+        <section>
+            <h2><span class="icon">⚡</span> 6. How It Works — Step-by-Step Flow</h2>
+            <div class="flow-steps">
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Task Reception & Strategy Selection</h4>
+                        <p>The dispatcher receives a task and determines the parallelization strategy — same-task (all agents solve the same problem) or split-task (each agent handles a different chunk).</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Fan-Out (Simultaneous Dispatch)</h4>
+                        <p>The dispatcher sends the task (or sub-tasks) to all N worker agents at the same time. All workers begin execution concurrently with no inter-dependencies.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Independent Parallel Execution</h4>
+                        <p>Each worker agent processes its task independently using its own tools, model, and prompts. Workers do not communicate with each other during execution.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>Result Collection (with Timeout)</h4>
+                        <p>The aggregator waits for all workers to complete (or until a timeout). It collects all available results, marking timed-out workers as failed.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h4>Aggregation & Quality Scoring</h4>
+                        <p>Results are aggregated using the selected strategy (voting, merge, best-of-N). An optional quality scorer ranks outputs before the final selection.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <h4>Final Output Delivery</h4>
+                        <p>The aggregated, quality-checked result is delivered to the user. Metadata about individual worker performance is logged for monitoring and improvement.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. Code Example -->
+        <section>
+            <h2><span class="icon">💻</span> 7. Implementation Example</h2>
+            <div class="code-block">
+                <div class="code-header">
+                    <div class="code-dots"><span></span><span></span><span></span></div>
+                    parallel_agents.py — Conceptual Python Implementation
+                </div>
+                <div class="code-content">
+<pre><span class="comment"># Parallel Multi-Agent Architecture — Fan-Out / Fan-In</span>
+<span class="keyword">import</span> asyncio
+<span class="keyword">from</span> typing <span class="keyword">import</span> List, Dict, Any
+<span class="keyword">from</span> collections <span class="keyword">import</span> Counter
+
+<span class="keyword">class</span> <span class="class-name">WorkerAgent</span>:
+    <span class="string">"""Independent worker — executes tasks in isolation."""</span>
+    <span class="keyword">def</span> <span class="function">__init__</span>(<span class="param">self</span>, name: str, model: str):
+        self.name = name
+        self.model = model
+
+    <span class="keyword">async def</span> <span class="function">execute</span>(<span class="param">self</span>, task: str) -> Dict[str, Any]:
+        result = <span class="keyword">await</span> self.<span class="function">call_llm</span>(task)
+        <span class="keyword">return</span> {<span class="string">"agent"</span>: self.name, <span class="string">"result"</span>: result}
+
+<span class="keyword">class</span> <span class="class-name">ParallelDispatcher</span>:
+    <span class="string">"""Fans out tasks to all workers simultaneously."""</span>
+    <span class="keyword">def</span> <span class="function">__init__</span>(<span class="param">self</span>, workers: List[<span class="class-name">WorkerAgent</span>], timeout: float = 30.0):
+        self.workers = workers
+        self.timeout = timeout
+
+    <span class="keyword">async def</span> <span class="function">fan_out</span>(<span class="param">self</span>, task: str) -> List[Dict]:
+        <span class="comment"># Launch ALL workers simultaneously</span>
+        tasks = [w.<span class="function">execute</span>(task) <span class="keyword">for</span> w <span class="keyword">in</span> self.workers]
+        results = <span class="keyword">await</span> asyncio.<span class="function">gather</span>(
+            *tasks, return_exceptions=<span class="keyword">True</span>
+        )
+        <span class="keyword">return</span> [r <span class="keyword">for</span> r <span class="keyword">in</span> results <span class="keyword">if not</span> isinstance(r, Exception)]
+
+<span class="keyword">class</span> <span class="class-name">Aggregator</span>:
+    <span class="string">"""Combines parallel results into a single output."""</span>
+
+    @staticmethod
+    <span class="keyword">def</span> <span class="function">majority_vote</span>(results: List[Dict]) -> str:
+        answers = [r[<span class="string">"result"</span>] <span class="keyword">for</span> r <span class="keyword">in</span> results]
+        <span class="keyword">return</span> Counter(answers).<span class="function">most_common</span>(1)[0][0]
+
+    @staticmethod
+    <span class="keyword">def</span> <span class="function">best_of_n</span>(results: List[Dict], scorer) -> str:
+        scored = [(r, scorer(r[<span class="string">"result"</span>])) <span class="keyword">for</span> r <span class="keyword">in</span> results]
+        <span class="keyword">return</span> max(scored, key=<span class="keyword">lambda</span> x: x[1])[0]
+
+<span class="comment"># Create parallel system</span>
+workers = [
+    <span class="class-name">WorkerAgent</span>(<span class="string">"GPT-4"</span>, <span class="string">"gpt-4"</span>),
+    <span class="class-name">WorkerAgent</span>(<span class="string">"Claude"</span>, <span class="string">"claude-3"</span>),
+    <span class="class-name">WorkerAgent</span>(<span class="string">"Gemini"</span>, <span class="string">"gemini-pro"</span>),
+]
+dispatcher = <span class="class-name">ParallelDispatcher</span>(workers, timeout=30.0)
+
+<span class="comment"># Fan-out → Fan-in</span>
+<span class="keyword">async def</span> <span class="function">solve</span>(question: str):
+    results = <span class="keyword">await</span> dispatcher.<span class="function">fan_out</span>(question)
+    answer = <span class="class-name">Aggregator</span>.<span class="function">majority_vote</span>(results)
+    <span class="keyword">return</span> answer
+
+asyncio.run(<span class="function">solve</span>(<span class="string">"What is the capital of France?"</span>))
+</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- 8. Advantages & Disadvantages -->
+        <section>
+            <h2><span class="icon">⚖️</span> 8. Advantages & Disadvantages</h2>
+            <div class="pros-cons">
+                <div class="pros-card">
+                    <h4>✅ Advantages</h4>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Maximum speed</strong> — wall-clock time = slowest worker, not sum of all workers</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Higher accuracy</strong> — voting/ensemble methods reduce individual agent errors</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Fault tolerant</strong> — system works even if some workers fail (graceful degradation)</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Simple to implement</strong> — no complex coordination protocols between workers</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Model diversity</strong> — use different LLMs/approaches for the same task to reduce bias</span></div>
+                    <div class="list-item"><span class="check">✓</span> <span><strong>Easy to scale</strong> — add more workers for higher throughput or accuracy</span></div>
+                </div>
+                <div class="cons-card">
+                    <h4>❌ Disadvantages</h4>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Resource intensive</strong> — N agents = N × cost for same-task parallelism</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>No inter-agent learning</strong> — workers can't build on each other's insights</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Aggregation complexity</strong> — merging free-form text outputs is non-trivial</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Not suited for sequential tasks</strong> — can't parallelize tasks with dependencies</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Slowest worker bottleneck</strong> — total time limited by the slowest agent</span></div>
+                    <div class="list-item"><span class="cross">✗</span> <span><strong>Diminishing returns</strong> — adding more workers gives progressively less accuracy gain</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 9. Comparison Table -->
+        <section>
+            <h2><span class="icon">📊</span> 9. Comparison with Other Architectures</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Property</th>
+                            <th>Hierarchical</th>
+                            <th>Decentralized</th>
+                            <th style="background: rgba(245, 158, 11, 0.2);">Parallel ★</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Execution Model</strong></td>
+                            <td>Sequential delegation</td>
+                            <td>Async peer collaboration</td>
+                            <td><strong>Simultaneous fan-out/fan-in</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Speed</strong></td>
+                            <td>Slow (sequential hops)</td>
+                            <td>Medium (negotiation overhead)</td>
+                            <td><strong>Fast (concurrent execution)</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Cost Efficiency</strong></td>
+                            <td>Good (each task once)</td>
+                            <td>Medium (negotiation overhead)</td>
+                            <td><strong>High (N × duplicate work)</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Accuracy Boost</strong></td>
+                            <td>Via chain-of-thought</td>
+                            <td>Via debate & consensus</td>
+                            <td><strong>Via ensemble & voting</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Inter-Agent Dependency</strong></td>
+                            <td>High (parent-child)</td>
+                            <td>Medium (peer negotiation)</td>
+                            <td><strong>None (fully independent)</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Best For</strong></td>
+                            <td>Complex workflows</td>
+                            <td>Autonomous swarms</td>
+                            <td><strong>Speed, voting, batch processing</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 10. Real-World Use Cases -->
+        <section>
+            <h2><span class="icon">🌍</span> 10. Real-World Use Cases</h2>
+            <div class="use-case">
+                <div class="use-case-icon">🗳️</div>
+                <div>
+                    <h4>LLM Jury / Constitutional AI Voting</h4>
+                    <p>Multiple LLMs independently evaluate an AI response for safety, accuracy, and helpfulness. Their votes are aggregated to produce a final quality score — used in RLHF pipelines and content moderation.</p>
+                </div>
+            </div>
+            <div class="use-case">
+                <div class="use-case-icon">💻</div>
+                <div>
+                    <h4>Competitive Code Generation (AlphaCode)</h4>
+                    <p>Generate thousands of candidate solutions in parallel, then filter and rank them. Google's AlphaCode used this approach to achieve competitive programming performance.</p>
+                </div>
+            </div>
+            <div class="use-case">
+                <div class="use-case-icon">📄</div>
+                <div>
+                    <h4>Parallel Document Processing</h4>
+                    <p>Process a 100-page document by splitting it into chunks and sending each chunk to a different agent for summarization, extraction, or translation — then merging results.</p>
+                </div>
+            </div>
+            <div class="use-case">
+                <div class="use-case-icon">🧪</div>
+                <div>
+                    <h4>A/B Testing Prompts / Models</h4>
+                    <p>Send the same query to agents using different prompts or models. Compare outputs to identify which approach performs best — a systematic way to evaluate agent strategies.</p>
+                </div>
+            </div>
+            <div class="use-case">
+                <div class="use-case-icon">🛡️</div>
+                <div>
+                    <h4>Redundant Safety Checks</h4>
+                    <p>Run the same safety evaluation through multiple independent classifiers in parallel. If any one flags a concern, the output is blocked — defense-in-depth for AI safety.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 11. Design Best Practices -->
+        <section>
+            <h2><span class="icon">🎯</span> 11. Design Best Practices</h2>
+            <div class="card">
+                <h3>⏱️ Always Set Timeouts</h3>
+                <p>Never wait indefinitely for all workers. Set aggressive timeouts and proceed with available results. A slow worker shouldn't delay the entire pipeline.</p>
+
+                <h3>🎯 Use Diverse Workers</h3>
+                <p>For same-task parallelism, use different models, prompts, or temperatures across workers. Diversity in approaches leads to better ensemble accuracy than running the same model N times.</p>
+
+                <h3>📊 Monitor Cost vs. Accuracy Trade-off</h3>
+                <p>More parallel workers means higher cost. Track the marginal accuracy improvement per additional worker and find the optimal N for your use case (often 3-5 is sufficient).</p>
+
+                <h3>🔄 Implement Graceful Degradation</h3>
+                <p>Design your aggregator to produce meaningful output even with partial results. If only 2 of 5 workers respond, the system should still return a useful answer.</p>
+
+                <h3>📝 Log Individual Worker Performance</h3>
+                <p>Track accuracy, latency, and error rates per worker. Over time, this data reveals which models/prompts perform best, enabling dynamic worker selection and weighting.</p>
+            </div>
+        </section>
+
+        <!-- 12. Key Takeaways -->
+        <section>
+            <h2><span class="icon">🎓</span> 12. Key Takeaways</h2>
+            <div class="highlight-box">
+                <h4>📌 Summary</h4>
+                <div class="list-item"><span class="check">▸</span> <span>Parallel architecture uses <strong>fan-out/fan-in</strong> for simultaneous execution across multiple agents.</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>Two sub-patterns: <strong>same-task</strong> (voting/redundancy) and <strong>split-task</strong> (throughput).</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>Provides <strong>maximum speed</strong> (wall-time = slowest worker) and <strong>higher accuracy</strong> via ensemble methods.</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>Trade-off: <strong>speed and accuracy vs. resource cost</strong> (N workers = N × the compute cost).</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>Workers are <strong>fully independent</strong> — simplest coordination model of the three architectures.</span></div>
+                <div class="list-item"><span class="check">▸</span> <span>Best for <strong>batch processing, voting systems, code generation, and safety-critical applications</strong>.</span></div>
+            </div>
+        </section>
+
+        <footer>
+            <p>Agentic AI — Credit Course &nbsp;|&nbsp; Module: Multi-Agent Architectures &nbsp;|&nbsp; Parallel Architecture</p>
+            <p style="margin-top: 0.5rem; font-size: 0.75rem;">© 2026 — Educational Reference Material</p>
+        </footer>
+    </div>
+</body>
+</html>

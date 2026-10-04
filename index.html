@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioGuard AI | Hierarchical Multi-Agent Medical Architecture</title>
+    <!-- CSS Link -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-sitemap"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>BioGuard AI</h1>
+                    <p>Hierarchical Multi-Agent Medical Platform</p>
+                </div>
+            </div>
+            <div class="status-badge">
+                <span class="status-dot active" id="global-status-dot"></span>
+                <span id="global-status-text">System Ready</span>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Grid -->
+        <div class="dashboard-grid">
+            
+            <!-- LEFT COLUMN: Hierarchical Architecture Diagram -->
+            <div class="section-panel" style="min-height: 580px;">
+                <div class="panel-title">
+                    <i class="fa-solid fa-sitemap" style="color: var(--color-supervisor);"></i>
+                    <h2>Hierarchical Coordinator Diagram</h2>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 2rem;">
+                    Central Supervisor Agent controls the sequence, validating user inputs, and routing diagnostic payloads sequentially downstream to specialist agents.
+                </p>
+
+                <!-- Architecture Map Container -->
+                <div class="architecture-container" id="architecture-map">
+                    <!-- SVG lines drawing connections -->
+                    <svg class="connections-svg" id="connections-svg">
+                        <!-- supervisor to validation (Left Mid) -->
+                        <path id="path-validation" class="connection-line" d="M 300, 80 Q 200, 100 150, 180" style="--active-color: var(--color-validation);"></path>
+                        <!-- supervisor to disease ID (Right Mid) -->
+                        <path id="path-disease" class="connection-line" d="M 300, 80 Q 400, 100 450, 180" style="--active-color: var(--color-disease);"></path>
+                        <!-- supervisor to risk assessment (Left Bottom) -->
+                        <path id="path-risk" class="connection-line" d="M 300, 80 Q 180, 130 150, 330" style="--active-color: var(--color-risk);"></path>
+                        <!-- supervisor to recommendation (Right Bottom) -->
+                        <path id="path-recommend" class="connection-line" d="M 300, 80 Q 420, 130 450, 330" style="--active-color: var(--color-recommend);"></path>
+                    </svg>
+
+                    <!-- SUPERVISOR ROW -->
+                    <div class="supervisor-row">
+                        <div class="agent-node node-supervisor" id="agent-supervisor" data-agent="supervisor">
+                            <div class="agent-status-badge">Standby</div>
+                            <div class="agent-header">
+                                <div class="agent-icon">
+                                    <i class="fa-solid fa-user-shield"></i>
+                                </div>
+                                <div class="agent-title-box">
+                                    <span class="agent-title">Supervisor Agent</span>
+                                    <span class="agent-role">System Coordinator</span>
+                                </div>
+                            </div>
+                            <div class="agent-body">
+                                The central controller. Sequences execution, intercepts requests, handles validation aborts, and compiles final summaries.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SPECIALIZED AGENTS GRID -->
+                    <div class="agents-grid">
+                        
+                        <!-- Validation Agent -->
+                        <div class="agent-node node-validation" id="agent-validation" data-agent="validation">
+                            <div class="agent-status-badge">Idle</div>
+                            <div class="agent-header">
+                                <div class="agent-icon">
+                                    <i class="fa-solid fa-clipboard-check"></i>
+                                </div>
+                                <div class="agent-title-box">
+                                    <span class="agent-title">Validation Agent</span>
+                                    <span class="agent-role">Data Gatekeeper</span>
+                                </div>
+                            </div>
+                            <div class="agent-body">
+                                Inspects symptom description and uploaded images for clinical validity, safety, and suitability. Reject junk/non-medical data.
+                            </div>
+                        </div>
+
+                        <!-- Disease Identification Agent -->
+                        <div class="agent-node node-disease" id="agent-disease" data-agent="disease">
+                            <div class="agent-status-badge">Idle</div>
+                            <div class="agent-header">
+                                <div class="agent-icon">
+                                    <i class="fa-solid fa-stethoscope"></i>
+                                </div>
+                                <div class="agent-title-box">
+                                    <span class="agent-title">Disease ID Agent</span>
+                                    <span class="agent-role">Diagnostic Classifier</span>
+                                </div>
+                            </div>
+                            <div class="agent-body">
+                                Analyzes validated text patterns and clinical image features to classify potential conditions and compute confidence scores.
+                            </div>
+                        </div>
+
+                        <!-- Risk Assessment Agent -->
+                        <div class="agent-node node-risk" id="agent-risk" data-agent="risk">
+                            <div class="agent-status-badge">Idle</div>
+                            <div class="agent-header">
+                                <div class="agent-icon">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                </div>
+                                <div class="agent-title-box">
+                                    <span class="agent-title">Risk Evaluator</span>
+                                    <span class="agent-role">Safety Grader</span>
+                                </div>
+                            </div>
+                            <div class="agent-body">
+                                Estimates clinical severity, safety risk levels (Low/Moderate/High), and identifies emergency warning signs.
+                            </div>
+                        </div>
+
+                        <!-- Recommendation Agent -->
+                        <div class="agent-node node-recommend" id="agent-recommend" data-agent="recommend">
+                            <div class="agent-status-badge">Idle</div>
+                            <div class="agent-header">
+                                <div class="agent-icon">
+                                    <i class="fa-solid fa-heart-pulse"></i>
+                                </div>
+                                <div class="agent-title-box">
+                                    <span class="agent-title">Recommendation Agent</span>
+                                    <span class="agent-role">Protocol Generator</span>
+                                </div>
+                            </div>
+                            <div class="agent-body">
+                                Provides supportive care recommendations, suggests clinical next steps, and flags critical warnings.
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Playground & Terminal Logs & Results -->
+            <div class="playground-section">
+                
+                <!-- Interactive Controls -->
+                <div class="section-panel">
+                    <div class="panel-title">
+                        <i class="fa-solid fa-flask" style="color: var(--color-validation);"></i>
+                        <h2>Simulation Playground</h2>
+                    </div>
+
+                    <!-- Preset Case Studies -->
+                    <div class="case-selectors-title">Select Preset Simulation Case</div>
+                    <div class="cases-grid">
+                        <button class="case-btn active" id="case-eczema" data-case="eczema">
+                            <span class="case-btn-icon">🩺</span>
+                            <span>Skin Lesion (Eczema)</span>
+                        </button>
+                        <button class="case-btn" id="case-pneumonia" data-case="pneumonia">
+                            <span class="case-btn-icon">🫁</span>
+                            <span>Chest Infection (Pneumonia)</span>
+                        </button>
+                        <button class="case-btn" id="case-migraine" data-case="migraine">
+                            <span class="case-btn-icon">🧠</span>
+                            <span>Chronic Migraine</span>
+                        </button>
+                        <button class="case-btn" id="case-strep" data-case="strep">
+                            <span class="case-btn-icon">👄</span>
+                            <span>Strep Throat (Pharyngitis)</span>
+                        </button>
+                        <button class="case-btn" id="case-gastro" data-case="gastro">
+                            <span class="case-btn-icon">🤢</span>
+                            <span>Stomach Flu (Gastroenteritis)</span>
+                        </button>
+                        <button class="case-btn" id="case-rhinitis" data-case="rhinitis">
+                            <span class="case-btn-icon">🤧</span>
+                            <span>Hay Fever (Allergic Rhinitis)</span>
+                        </button>
+                        <button class="case-btn" id="case-uti" data-case="uti">
+                            <span class="case-btn-icon">🚽</span>
+                            <span>UTI (Cystitis)</span>
+                        </button>
+                        <button class="case-btn" id="case-invalid" data-case="invalid">
+                            <span class="case-btn-icon">🐶</span>
+                            <span>Invalid Data (Pet Photo)</span>
+                        </button>
+                    </div>
+
+                    <!-- Custom Inputs Form -->
+                    <div class="input-form-group" style="margin-bottom: 1.25rem;">
+                        <div class="label-title">
+                            <span>Symptom / Health Data Description</span>
+                            <span style="font-weight: 400; font-size: 0.75rem; color: var(--text-muted);" id="char-count">0 / 500 chars</span>
+                        </div>
+                        <textarea class="textarea-input" id="symptoms-input" placeholder="Type clinical symptoms here..."></textarea>
+                    </div>
+
+                    <!-- Mock Upload Area -->
+                    <!-- Image Upload Area -->
+                    <div class="input-form-group" style="margin-bottom: 1.5rem;">
+                        <label class="label-title">Upload Clinical Image</label>
+                        <div class="image-uploader-simulation" id="image-uploader">
+                            <input type="file" id="real-file-input" accept="image/*" style="display: none;">
+                            <i class="fa-solid fa-cloud-arrow-up uploader-icon" id="uploader-icon"></i>
+                            <span class="uploader-text" id="uploader-text">Skin_lesion_macro_28.jpg selected</span>
+                            <span class="uploader-subtext" id="uploader-subtext">Click to browse your local images or drop a file</span>
+                            <img src="" class="uploaded-image-preview" id="image-preview" alt="Preview">
+                        </div>
+                    </div>
+
+                    <!-- Pipeline Simulation Settings -->
+                    <div style="border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 1rem; margin-top: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div class="case-selectors-title" style="margin-bottom: 0.25rem;">Simulation Settings</div>
+                        
+                        <!-- Speed Control -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                            <span style="color: var(--text-secondary);"><i class="fa-solid fa-gauge-high"></i> Step Delay</span>
+                            <div style="display: flex; gap: 0.75rem;">
+                                <label style="cursor: pointer; display: flex; align-items: center; gap: 0.25rem; color: var(--text-secondary);">
+                                    <input type="radio" name="sim-speed" value="200"> Fast (0.2s)
+                                </label>
+                                <label style="cursor: pointer; display: flex; align-items: center; gap: 0.25rem; color: var(--text-secondary);">
+                                    <input type="radio" name="sim-speed" value="1500" checked> Normal (1.5s)
+                                </label>
+                                <label style="cursor: pointer; display: flex; align-items: center; gap: 0.25rem; color: var(--text-secondary);">
+                                    <input type="radio" name="sim-speed" value="3500"> Slow (3.5s)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Mode Switch -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                            <span style="color: var(--text-secondary);"><i class="fa-solid fa-rotate"></i> Execution Mode</span>
+                            <div style="display: flex; gap: 1rem;">
+                                <label style="cursor: pointer; display: flex; align-items: center; gap: 0.25rem; color: var(--text-secondary);">
+                                    <input type="radio" name="sim-mode" value="auto" checked> Auto-Run
+                                </label>
+                                <label style="cursor: pointer; display: flex; align-items: center; gap: 0.25rem; color: var(--text-secondary);">
+                                    <input type="radio" name="sim-mode" value="manual"> Step-by-Step
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Verbose Thoughts -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                            <span style="color: var(--text-secondary);"><i class="fa-solid fa-brain"></i> Agent Reasoning Logs</span>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 0.25rem; color: var(--text-secondary);">
+                                <input type="checkbox" id="verbose-thoughts" checked> Show Thoughts
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Action controls -->
+                    <div style="flex-direction: column; display: flex; gap: 0.75rem; margin-top: 1.25rem;">
+                        <!-- Flow Helper Info Bar -->
+                        <div id="flow-helper-container" style="background-color: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.15); border-radius: 12px; padding: 0.75rem 1rem; font-size: 0.85rem; line-height: 1.4; color: var(--text-secondary);">
+                            <span id="flow-helper-text"><i class="fa-solid fa-circle-info" style="color: var(--color-supervisor);"></i> Select a preset case or write symptoms and click <strong>Start Supervisor Pipeline</strong>. Click any card to inspect its role.</span>
+                        </div>
+
+                        <div style="display: flex; gap: 0.75rem;">
+                            <button class="analyze-btn" id="start-analysis-btn" style="flex: 1;">
+                                <i class="fa-solid fa-play"></i>
+                                <span>Start Supervisor Pipeline</span>
+                            </button>
+                            
+                            <button class="analyze-btn" id="next-step-btn" style="flex: 1; background: linear-gradient(135deg, var(--color-validation), #0d9488); box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3); display: none;" disabled>
+                                <i class="fa-solid fa-forward-step"></i>
+                                <span>Next Agent Step</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Console Output Logging -->
+                <div class="section-panel" style="padding: 1.5rem;">
+                    <div class="console-header">
+                        <div class="console-dots">
+                            <span class="console-dot red"></span>
+                            <span class="console-dot yellow"></span>
+                            <span class="console-dot green"></span>
+                        </div>
+                        <span>AGENTS EXECUTION TERMINAL</span>
+                        <span id="terminal-status"><i class="fa-solid fa-terminal"></i> active</span>
+                    </div>
+                    <div class="console-panel" id="terminal-logs">
+                        <div class="console-line system">[SYSTEM] BioGuard AI Hierarchical Multi-Agent Network online.</div>
+                        <div class="console-line system">[SYSTEM] Standing by for Supervisor activation...</div>
+                    </div>
+                </div>
+
+                <!-- Final Report Results Panel -->
+                <div class="section-panel" id="results-section-panel">
+                    <div class="panel-title">
+                        <i class="fa-solid fa-file-waveform" style="color: var(--color-recommend);"></i>
+                        <h2>Hierarchical System Output</h2>
+                    </div>
+
+                    <!-- Validation Error Box (hidden by default) -->
+                    <div id="validation-failed-view" style="display: none; margin-bottom: 1rem;">
+                        <div class="validation-error-box">
+                            <i class="fa-solid fa-circle-xmark validation-error-icon"></i>
+                            <div class="validation-error-text">
+                                <h4>Data Validation Rejection</h4>
+                                <p id="validation-failed-reason">Uploaded image or symptom description does not appear to contain valid clinical data.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Valid Analysis Output -->
+                    <div class="results-panel" id="analysis-results-view">
+                        <div class="results-grid">
+                            
+                            <!-- Possible Condition Card -->
+                            <div class="result-card">
+                                <span class="result-label">Condition Identified</span>
+                                <div class="result-value" id="res-condition">Eczema (Atopic Dermatitis)</div>
+                            </div>
+                            
+                            <!-- Confidence Rating Card -->
+                            <div class="result-card">
+                                <div class="result-label" style="display:flex; justify-content:space-between;">
+                                    <span>Confidence Level</span>
+                                    <span id="res-confidence-pct">85%</span>
+                                </div>
+                                <div class="confidence-bar-outer">
+                                    <div class="confidence-bar-inner" id="res-confidence-bar" style="width: 85%;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Risk Level Severity Card -->
+                            <div class="result-card" style="grid-column: span 2;">
+                                <span class="result-label">Severity & Risk Assessment</span>
+                                <div>
+                                    <span class="risk-level-badge moderate" id="res-risk-badge">
+                                        <i class="fa-solid fa-circle-exclamation"></i>
+                                        <span id="res-risk-text">Moderate</span>
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;" id="res-risk-details">
+                                    Mild erythema and localized pruritus. No systemic infection symptoms present.
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Recommendations list -->
+                        <div class="recommendations-box">
+                            <div class="box-title">
+                                <i class="fa-solid fa-prescription-bottle-medical"></i>
+                                <span>General Precautions & Recommendations</span>
+                            </div>
+                            <ul class="box-list" id="res-recommendations">
+                                <li>Apply hypoallergenic moisturizer twice daily.</li>
+                                <li>Avoid harsh soaps, chemical products, and hot baths.</li>
+                                <li>Use a cold compress to relieve itching; do not scratch.</li>
+                            </ul>
+                        </div>
+
+                        <!-- Standard Clinical Medications (First-line) -->
+                        <div class="medications-box" id="medications-container" style="background-color: rgba(20, 184, 166, 0.04); border: 1px solid rgba(20, 184, 166, 0.15); border-radius: 12px; padding: 1.25rem; margin-top: 1rem; display: none;">
+                            <div class="box-title" style="color: var(--color-validation); margin-bottom: 0.75rem; font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa-solid fa-tablets"></i>
+                                <span>Standard Clinical Medications (First-line)</span>
+                            </div>
+                            <ul class="box-list" id="res-medications">
+                                <!-- Populated dynamically by app.js -->
+                            </ul>
+                        </div>
+
+                        <!-- Suggested Next Steps list -->
+                        <div class="next-steps-box">
+                            <div class="box-title">
+                                <i class="fa-solid fa-circle-arrow-right"></i>
+                                <span>Suggested Clinical Next Steps</span>
+                            </div>
+                            <ul class="box-list" id="res-nextsteps">
+                                <li>Schedule an appointment with a primary care doctor or dermatologist.</li>
+                                <li>If skin displays signs of severe bacterial infection (pus, warmth, spreading redness), seek prompt medical review.</li>
+                            </ul>
+                        </div>
+
+                        <!-- Event Communication Flow list -->
+                        <div class="event-flow-box" style="background-color: rgba(139, 92, 246, 0.04); border: 1px solid rgba(139, 92, 246, 0.15); border-radius: 12px; padding: 1.25rem; margin-top: 1rem;">
+                            <div class="box-title" style="color: var(--color-eventbus); margin-bottom: 0.75rem; font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa-solid fa-timeline"></i>
+                                <span>Event Communication Flow (Decentralized)</span>
+                            </div>
+                            <ul class="box-list" id="event-flow-container">
+                                <!-- Populated dynamically by app.js -->
+                            </ul>
+                        </div>
+
+                        <!-- Disclaimer Banner -->
+                        <div class="medical-disclaimer">
+                            <i class="fa-solid fa-circle-info disclaimer-icon"></i>
+                            <div class="disclaimer-text">
+                                <strong>Safety Disclaimer:</strong> This system is an AI-based clinical screening support tool. It is <strong>not a medical device or a replacement for a qualified healthcare professional</strong>. Do not ignore professional advice or delay seeking care because of details provided by this tool. In the event of a medical emergency, immediately contact your local emergency services.
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Agent Detail Inspector Modal -->
+    <div id="agent-inspector-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(6, 9, 19, 0.85); backdrop-filter: blur(8px); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; max-width: 600px; width: 90%; padding: 2rem; box-shadow: var(--shadow-premium); position: relative; animation: fadeIn 0.3s ease;">
+            <button id="close-modal-btn" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--text-muted); font-size: 1.25rem; cursor: pointer; transition: var(--transition);"><i class="fa-solid fa-xmark"></i></button>
+            
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                <div id="modal-agent-icon" style="width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; color: #fff;">
+                    <!-- Icon -->
+                </div>
+                <div>
+                    <h3 id="modal-agent-name" style="margin: 0; color: var(--text-primary); font-size: 1.4rem;">Agent Name</h3>
+                    <span id="modal-agent-role" style="font-size: 0.85rem; color: var(--text-secondary);">Agent Role</span>
+                </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <div>
+                    <h4 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 0.4rem;">Operational Description</h4>
+                    <p id="modal-agent-desc" style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.4;"></p>
+                </div>
+                
+                <div>
+                    <h4 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 0.4rem;">Responsibilities</h4>
+                    <ul id="modal-agent-tasks" style="list-style-type: disc; margin-left: 1.25rem; font-size: 0.9rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.25rem;">
+                        <!-- Tasks -->
+                    </ul>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div style="background-color: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 8px; padding: 0.75rem;">
+                        <span style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Expects Input Schema</span>
+                        <code id="modal-agent-input" style="font-family: var(--font-mono); font-size: 0.75rem; color: #a7f3d0; word-break: break-all; white-space: pre-wrap;"></code>
+                    </div>
+                    <div style="background-color: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 8px; padding: 0.75rem;">
+                        <span style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Returns Output Schema</span>
+                        <code id="modal-agent-output" style="font-family: var(--font-mono); font-size: 0.75rem; color: #a7f3d0; word-break: break-all; white-space: pre-wrap;"></code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Links -->
+    <script src="app.js"></script>
+</body>
+</html>
